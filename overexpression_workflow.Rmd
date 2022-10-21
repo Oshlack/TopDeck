@@ -1,0 +1,205 @@
+---
+title: "Workflow"
+output: html_notebook
+---
+```{r}
+library(recount3)
+library(snapcount)
+library(ggplot2)
+library(reshape2)
+library(dplyr)
+library(tidyverse)
+library(EnvStats) 
+library(gsubfn)
+```
+
+
+##Gene overexpression workflow using TACC3 as an example
+
+#Generating count dataframe
+```{r}
+#gene query functions
+neg_gene_query <- function(gene) {
+  sb <- QueryBuilder(compilation = "tcga", regions = gene)
+  sb <- set_row_filters(sb, strand == "-")
+  sb <- query_gene(sb)
+  sb
+}
+
+pos_gene_query <- function(gene) {
+  sb <- QueryBuilder(compilation = "tcga", regions = gene)
+  sb <- set_row_filters(sb, strand == "+")
+  sb <- query_gene(sb)
+  sb
+}
+
+gtex_neg_gene_query <- function(gene) {
+  sb <- QueryBuilder(compilation = "gtex", regions = gene)
+  sb <- set_row_filters(sb, strand == "-")
+  sb <- query_gene(sb)
+  sb
+}
+
+gtex_pos_gene_query <- function(gene) {
+  sb <- QueryBuilder(compilation = "gtex", regions = gene)
+  sb <- set_row_filters(sb, strand == "+")
+  sb <- query_gene(sb)
+  sb
+}
+
+
+#functions to generate count dataframes
+tcga_ids <- read.csv('tcga.samples.csv') 
+
+gene_counts <- function(gene, df, gene.ID) {
+  gene_counts <- as.data.frame(as.matrix(assays(gene)$counts)[1,])
+  colnames(gene_counts) <- "Counts"
+  gene_counts$rail_id <- colData(gene)[, "rail_id"]
+  gene_counts <- gene_counts %>% transform(rail_id = sub("^", "rail_", gene_counts$rail_id))
+  gene_counts$Cancer <- colData(gene)[,"gdc_cases.project.name"]
+  gene_counts$Tissue <- colData(gene)[, "gdc_cases.project.primary_site"]
+  gene_counts$Tissue <- recode(gene_counts$Tissue,
+                               "Bone Marrow" = "Blood")
+  gene_counts$Project_ID <- colData(gene)[, "gdc_cases.project.project_id"]
+  gene_counts <- gene_counts %>% transform(Project_ID = gsub("TCGA-", "", gene_counts$Project_ID))
+  gene_counts$ID <- colData(gene)[, "gdc_cases.samples.portions.analytes.aliquots.submitter_id"]
+  gene_counts$auc <- colData(gene)[, "auc"]
+  gene_counts$mapped <- colData(gene)[, "mapped_read_count"]
+  gene_counts <- gene_counts %>% mutate(auc_norm = (Counts/auc)*1000000, mapped_norm = (Counts/mapped)*1000000, log2_Counts = log2(Counts), log2_auc_norm = log2(auc_norm), log2_map_norm = log2(mapped_norm))
+  gene_counts$has_cancer <- ifelse(colData(gene)[, "gdc_cases.samples.sample_type"] == "Solid Tissue Normal", "Normal", "Cancer")
+  projects <- c("ACC", "PCPG", "GBM", "LGG", "READ", "COAD", "KIRP", "KIRC", "KICH", "LUSC", "LUAD", "UCEC", "UCS")
+  projects <- data.frame(projects)
+  cancer <- gene_counts %>% filter(has_cancer == "Cancer") %>% mutate(cancer_status = ifelse(Project_ID %in% projects[,1], .$Project_ID, "Cancer"))
+  normal <- gene_counts %>% filter(has_cancer == "Normal") 
+  normal$cancer_status <- "Normal"
+  gene_counts2 <- rbind(cancer, normal)
+  gene_counts2 <- gene_counts2[order(gene_counts2$log2_auc_norm, decreasing = TRUE),] 
+  gene_counts2 %>%
+  mutate(fusion = ifelse(gene_counts2$ID %in% df[, gene.ID], "Fusion", "No Fusion")) 
+}
+
+gtex_counts <- function(gene) {
+  gtex_counts <- as.data.frame(as.matrix(assays(gene)$counts)[1,])
+  colnames(gtex_counts) <- "Counts"
+  gtex_counts$rail_id <- colData(gene)[, "rail_id"]
+  gtex_counts <- gtex_counts %>% transform(rail_id = sub("^", "rail_", gtex_counts$rail_id))
+  gtex_counts$Cancer <- "GTEx"
+  gtex_counts$Tissue <- colData(gene)[,"Histological_Type"]
+  gtex_counts$Tissue <- recode(gtex_counts$Tissue, 
+                              "Cervix Uteri" = "Cervix")
+  gtex_counts$Project_ID <- "GTEx"
+  gtex_counts$ID <- "GTEx"
+  gtex_counts$auc <- colData(gene)[, "auc"]
+  gtex_counts$mapped <- colData(gene)[, "mapped_read_count"]
+  gtex_counts <- gtex_counts %>% mutate(auc_norm = (Counts/auc)*1000000, mapped_norm = (Counts/mapped)*1000000, log2_Counts = log2(Counts), log2_auc_norm = log2(auc_norm), log2_map_norm = log2(mapped_norm))
+  gtex_counts$has_cancer <- "GTEx"
+  gtex_counts$cancer_status <- "GTEx"
+  gtex_counts$fusion <- "GTEx"
+  gtex_counts <- gtex_counts[order(gtex_counts$log2_auc_norm, decreasing = TRUE),]
+  gtex_counts
+}
+
+#function to generate combined dataframe
+combined_counts <- function(gene_counts, gtex_counts) {
+  combined_counts <- rbind(gene_counts, gtex_counts)
+  combined_counts <- combined_counts[, -c(7:8)]
+  combined_counts <- combined_counts %>% filter(Tissue != "Bone Marrow", 
+                                                Tissue != "Vagina", 
+                                                Tissue != "Spleen", 
+                                                Tissue != "Fallopian Tube", 
+                                                Tissue != "NA",
+                                                Tissue != "Adipose Tissue",
+                                                Tissue != "Muscle",
+                                                Tissue != "Blood Vessel",
+                                                Tissue != "Nerve",
+                                                Tissue != "Colon",
+                                                Tissue != "Small Intestine",
+                                                Tissue != "Pituitary",
+                                                Tissue != "Heart",
+                                                Tissue != "Salivary Gland")
+  combined_counts <- combined_counts %>%
+    group_by(Tissue, cancer_status) %>%
+    mutate(min = min(log2_auc_norm),
+            quant25 = quantile(log2_auc_norm, probs = 0.25), 
+            quant50 = quantile(log2_auc_norm, probs = 0.5),
+            quant75 = quantile(log2_auc_norm, probs = 0.75),
+            quant90 = quantile(log2_auc_norm, probs = 0.9),
+            quant95 = quantile(log2_auc_norm, probs = 0.95),
+            max = max(log2_auc_norm),
+            outlier = (quant75 + 1.5*(quant75 - quant25)))
+  combined_counts <- combined_counts %>%
+    group_by(Tissue, cancer_status) %>%
+    mutate(is_outlier = ifelse(log2_auc_norm >= outlier, T, F),
+           above_90 = ifelse(log2_auc_norm >= quant90, T, F),
+           above_95 = ifelse(log2_auc_norm >= quant95, T, F))
+  combined_counts %>% mutate(is_expressed = ifelse(quant25 <= 1, "Not normally expressed", "Normally expressed")) 
+}
+```
+
+```{r}
+tacc3_gene <- pos_gene_query("tacc3")
+gtex_tacc3_gene <- gtex_pos_gene_query("tacc3")
+tacc3_counts <- gene_counts(tacc3_gene, tcga_ids, "TACC3.ID")
+gtex_tacc3_counts <- gtex_counts(gtex_tacc3_gene)
+tacc3_combined <- combined_counts(tacc3_counts, gtex_tacc3_counts)
+```
+
+#identifying overexpressed samples
+```{r}
+gene_potential_fusions <- tacc3_combined %>% 
+  filter(has_cancer == "Cancer", above_95 == TRUE) %>%
+  ungroup() %>% 
+  group_by(Tissue, Project_ID) %>%
+  select(rail_id, Tissue, Project_ID, Cancer, ID, auc_norm)
+gene_potential_fusions
+write.csv(gene_potential_fusions, 'gene_overexp_tacc3_potential_fusions.csv')
+```
+
+
+#comparing TCGA cancer and GTEx data
+one sided Mann-Whitney-Wilcoxon test (TCGA > GTEx)
+```{r}
+compare_tcga_gtex_sided <- function(gene) {
+  counts <- gene
+  counts <- counts %>% 
+  filter(has_cancer != "Normal") %>% 
+  filter(Tissue != "Bile Duct", Tissue != "Colorectal", Tissue != "Eye", Tissue != "Head and Neck", Tissue != "Lymph Nodes", Tissue != "Pleura", Tissue != "Soft Tissue", Tissue != "Thymus") %>%
+  group_by(has_cancer) %>%
+  split(f = list(as.character(.$Tissue))) %>%
+  map(~ wilcox.test(log2_auc_norm ~ has_cancer, data = .x, alternative = "greater")$p.value) %>%
+  unlist(., .$Tissue) %>%
+  data.frame(.)
+  counts
+}
+compare_tcga_gtex_sided(tacc3_combined)
+```
+-TCGA tissues that are significant (p < 0.05)
+```{r}
+compare_tcga_gtex_sided(tacc3_combined) %>% filter(. < 0.05)
+```
+
+boxplot visualisation with samples above 95th percentile overlaid in grey
+```{r}
+tacc3_combined %>%
+  filter(has_cancer == "Cancer") %>%
+  ggplot(aes(x = Project_ID, y = log2_auc_norm, fill = Project_ID)) +
+  geom_boxplot() +
+  geom_jitter(data = . %>% filter(above_95 == TRUE), colour = "darkgrey") +
+  theme(legend.position = "none") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=0.5))
+```
+split by tissue and data source
+```{r}
+tacc3_combined %>%
+  ggplot(aes(x = has_cancer, y = log2_auc_norm, fill = has_cancer)) +
+  geom_boxplot() +
+  geom_jitter(data = . %>% filter(has_cancer == "Cancer", above_95 == TRUE), colour = "darkgrey") +
+  theme(legend.position = "none") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=0.5)) +
+  facet_wrap(~ Tissue)
+```
+
+
+
+
+
