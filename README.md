@@ -5,7 +5,7 @@ TopDeck allows for the analysis of a single 3' fusion gene partner, by identifyi
 
 TopDeck is the culmination of an Honours thesis for Monash University in collaboration with the Peter MacCallum Cancer Centre.
 
-##Gene Overexpression
+## Gene Overexpression
 A demonstration of the gene overexpression method using the 3' gene TACC3 is available in the file overexpression_workflow.Rmd, along with the functions used.
 
 Overexpression was calculated as samples above the 95th percentile, after a preliminary analysis with Tukey's definition of outliers failed to identify a significant amount of fusion gene samples (outliers.Rmd).
