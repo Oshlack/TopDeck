@@ -1,0 +1,209 @@
+---
+title: "prop_cum_method"
+output: html_notebook
+---
+
+
+Identify samples which have a significant change in average exon expression based on the  cumulative counts function which is run for all ten test genes across corresponding cancer types (Tables 1 and 2, Supplementary Table 8).
+
+```{r}
+#For 3' genes on the negative strand
+get_all_sig_z_prop_cum <- function(gene, project_id) {
+  df <- raw_exon_counts_neg(gene)
+  proj_df <- subset_project_neg(gene, project_id, df)
+  cumsum_df <- cumsum_calc_neg(gene, proj_df)
+  diff_df <- diff_calc(cumsum_df)
+  diff_auc_df <- norm_auc_neg(gene, project_id, diff_df)
+  all_z <- z_calc(diff_auc_df)
+  all_z
+}
+
+#For 3' genes on the positive strand
+get_all_sig_z_prop_cum_pos <- function(gene, project_id) {
+  df <- raw_exon_counts(gene)
+  proj_df <- subset_project(gene, project_id, df)
+  cumsum_df <- cumsum_calc(gene, proj_df)
+  diff_df <- diff_calc(cumsum_df)
+  diff_auc_df <- norm_auc(gene, project_id, diff_df)
+  all_z <- z_calc(diff_auc_df)
+  all_z
+}
+```
+
+All ten test genes by corresponding cancer type:
+```{r}
+alk_blca_prop_cum_all <- get_all_sig_z_prop_cum("ALK", "TCGA-BLCA")
+alk_kirp_prop_cum_all <- get_all_sig_z_prop_cum("ALK", "TCGA-KIRP")
+alk_luad_prop_cum_all <- get_all_sig_z_prop_cum("ALK", "TCGA-LUAD")
+alk_read_prop_cum_all <- get_all_sig_z_prop_cum("ALK", "TCGA-READ")
+alk_sarc_prop_cum_all <- get_all_sig_z_prop_cum("ALK", "TCGA-SARC")
+alk_skcm_prop_cum_all <- get_all_sig_z_prop_cum("ALK", "TCGA-SKCM")
+alk_thca_prop_cum_all <- get_all_sig_z_prop_cum("ALK", "TCGA-THCA")
+
+erg_cesc_prop_cum_all <- get_all_sig_z_prop_cum("ERG", "TCGA-CESC")
+erg_lgg_prop_cum_all <- get_all_sig_z_prop_cum("ERG", "TCGA-LGG")
+erg_paad_prop_cum_all <- get_all_sig_z_prop_cum("ERG", "TCGA-PAAD")
+erg_pcpg_prop_cum_all <- get_all_sig_z_prop_cum("ERG", "TCGA-PCPG")
+erg_prad_prop_cum_all <- get_all_sig_z_prop_cum("ERG", "TCGA-PRAD")
+
+etv1_lgg_prop_cum_all <- get_all_sig_z_prop_cum("ETV1", "TCGA-LGG")
+etv1_prad_prop_cum_all <- get_all_sig_z_prop_cum("ETV1", "TCGA-PRAD")
+
+maml3_brca_prop_cum_all <- get_all_sig_z_prop_cum("MAML3", "TCGA-BRCA")
+maml3_lihc_prop_cum_all <- get_all_sig_z_prop_cum("MAML3", "TCGA-LIHC")
+maml3_pcpg_prop_cum_all <- get_all_sig_z_prop_cum("MAML3", "TCGA-PCPG")
+
+ntrk3_brca_prop_cum_all <- get_all_sig_z_prop_cum("NTRK3", "TCGA-BRCA")
+ntrk3_cesc_prop_cum_all <- get_all_sig_z_prop_cum("NTRK3", "TCGA-CESC")
+ntrk3_coad_prop_cum_all <- get_all_sig_z_prop_cum("NTRK3", "TCGA-COAD")
+ntrk3_hnsc_prop_cum_all <- get_all_sig_z_prop_cum("NTRK3", "TCGA-HNSC")
+ntrk3_lgg_prop_cum_all <- get_all_sig_z_prop_cum("NTRK3", "TCGA-LGG")
+ntrk3_paad_prop_cum_all <- get_all_sig_z_prop_cum("NTRK3", "TCGA-PAAD")
+ntrk3_skcm_prop_cum_all <- get_all_sig_z_prop_cum("NTRK3", "TCGA-SKCM")
+ntrk3_thca_prop_cum_all <- get_all_sig_z_prop_cum("NTRK3", "TCGA-THCA")
+
+tfe3_kirc_prop_cum_all <- get_all_sig_z_prop_cum("TFE3", "TCGA-KIRC")
+tfe3_kirp_prop_cum_all <- get_all_sig_z_prop_cum("TFE3", "TCGA-KIRP")
+tfe3_ucec_prop_cum_all <- get_all_sig_z_prop_cum("TFE3", "TCGA-UCEC")
+
+arhgap26_cesc_prop_cum_all <- get_all_sig_z_prop_cum_pos("ARHGAP26", "TCGA-CESC")
+arhgap26_hnsc_prop_cum_all <- get_all_sig_z_prop_cum_pos("ARHGAP26", "TCGA-HNSC")
+arhgap26_luad_prop_cum_all <- get_all_sig_z_prop_cum_pos("ARHGAP26", "TCGA-LUAD")
+arhgap26_lusc_prop_cum_all <- get_all_sig_z_prop_cum_pos("ARHGAP26", "TCGA-LUSC")
+arhgap26_sarc_prop_cum_all <- get_all_sig_z_prop_cum_pos("ARHGAP26", "TCGA-SARC")
+arhgap26_stad_prop_cum_all <- get_all_sig_z_prop_cum_pos("ARHGAP26", "TCGA-STAD")
+
+rara_brca_prop_cum_all <- get_all_sig_z_prop_cum_pos("RARA", "TCGA-BRCA")
+rara_cesc_prop_cum_all <- get_all_sig_z_prop_cum_pos("RARA", "TCGA-CESC")
+rara_gbm_prop_cum_all <- get_all_sig_z_prop_cum_pos("RARA", "TCGA-GBM")
+rara_laml_prop_cum_all <- get_all_sig_z_prop_cum_pos("RARA", "TCGA-LAML")
+rara_ov_prop_cum_all <- get_all_sig_z_prop_cum_pos("RARA", "TCGA-OV")
+rara_pcpg_prop_cum_all <- get_all_sig_z_prop_cum_pos("RARA", "TCGA-PCPG")
+rara_read_prop_cum_all <- get_all_sig_z_prop_cum_pos("RARA", "TCGA-READ")
+rara_stad_prop_cum_all <- get_all_sig_z_prop_cum_pos("RARA", "TCGA-STAD")
+
+ret_brca_prop_cum_all <- get_all_sig_z_prop_cum_pos("RET", "TCGA-BRCA")
+ret_coad_prop_cum_all <- get_all_sig_z_prop_cum_pos("RET", "TCGA-COAD")
+ret_laml_prop_cum_all <- get_all_sig_z_prop_cum_pos("RET", "TCGA-LAML")
+ret_luad_prop_cum_all <- get_all_sig_z_prop_cum_pos("RET", "TCGA-LUAD")
+ret_ov_prop_cum_all <- get_all_sig_z_prop_cum_pos("RET", "TCGA-OV")
+ret_thca_prop_cum_all <- get_all_sig_z_prop_cum_pos("RET", "TCGA-THCA")
+
+tacc3_blca_prop_cum_all <- get_all_sig_z_prop_cum_pos("TACC3", "TCGA-BLCA")
+tacc3_brca_prop_cum_all <- get_all_sig_z_prop_cum_pos("TACC3", "TCGA-BRCA")
+tacc3_cesc_prop_cum_all <- get_all_sig_z_prop_cum_pos("TACC3", "TCGA-CESC")
+tacc3_esca_prop_cum_all <- get_all_sig_z_prop_cum_pos("TACC3", "TCGA-ESCA")
+tacc3_gbm_prop_cum_all <- get_all_sig_z_prop_cum_pos("TACC3", "TCGA-GBM")
+tacc3_hnsc_prop_cum_all <- get_all_sig_z_prop_cum_pos("TACC3", "TCGA-HNSC")
+tacc3_kirp_prop_cum_all <- get_all_sig_z_prop_cum_pos("TACC3", "TCGA-KIRP")
+tacc3_laml_prop_cum_all <- get_all_sig_z_prop_cum_pos("TACC3", "TCGA-LAML")
+tacc3_lgg_prop_cum_all <- get_all_sig_z_prop_cum_pos("TACC3", "TCGA-LGG")
+tacc3_lihc_prop_cum_all <- get_all_sig_z_prop_cum_pos("TACC3", "TCGA-LIHC")
+tacc3_luad_prop_cum_all <- get_all_sig_z_prop_cum_pos("TACC3", "TCGA-LUAD")
+tacc3_lusc_prop_cum_all <- get_all_sig_z_prop_cum_pos("TACC3", "TCGA-LUSC")
+tacc3_stad_prop_cum_all <- get_all_sig_z_prop_cum_pos("TACC3", "TCGA-STAD")
+```
+Merge each 3' gene across cancer types into one dataframe per cancer type. Saved as Rdata file prop_cum_all.Rdata
+```{r}
+all_alk_prop_cum_all <- cbind(alk_blca_prop_cum_all,
+alk_kirp_prop_cum_all,
+alk_luad_prop_cum_all,
+alk_read_prop_cum_all,
+alk_sarc_prop_cum_all,
+alk_skcm_prop_cum_all,
+alk_thca_prop_cum_all)
+
+all_arhgap26_prop_cum_all <- cbind(arhgap26_cesc_prop_cum_all,
+arhgap26_hnsc_prop_cum_all,
+arhgap26_luad_prop_cum_all,
+arhgap26_lusc_prop_cum_all,
+arhgap26_sarc_prop_cum_all,
+arhgap26_stad_prop_cum_all)
+
+all_erg_prop_cum_all <- cbind(erg_cesc_prop_cum_all,
+erg_lgg_prop_cum_all,
+erg_paad_prop_cum_all,
+erg_pcpg_prop_cum_all,
+erg_prad_prop_cum_all)
+
+all_etv1_prop_cum_all <- cbind(etv1_lgg_prop_cum_all,
+etv1_prad_prop_cum_all)
+
+all_maml3_prop_cum_all <- cbind(maml3_brca_prop_cum_all,
+maml3_lihc_prop_cum_all,
+maml3_pcpg_prop_cum_all)
+
+all_ntrk3_prop_cum_all <- cbind(ntrk3_brca_prop_cum_all,
+ntrk3_cesc_prop_cum_all,
+ntrk3_coad_prop_cum_all,
+ntrk3_hnsc_prop_cum_all,
+ntrk3_lgg_prop_cum_all,
+ntrk3_paad_prop_cum_all,
+ntrk3_skcm_prop_cum_all,
+ntrk3_thca_prop_cum_all)
+
+all_rara_prop_cum_all <- cbind(rara_brca_prop_cum_all,
+rara_cesc_prop_cum_all,
+rara_gbm_prop_cum_all,
+rara_laml_prop_cum_all,
+rara_ov_prop_cum_all,
+rara_pcpg_prop_cum_all,
+rara_read_prop_cum_all,
+rara_stad_prop_cum_all)
+
+all_ret_prop_cum_all <- cbind(ret_brca_prop_cum_all,
+ret_coad_prop_cum_all,
+ret_laml_prop_cum_all,
+ret_luad_prop_cum_all,
+ret_ov_prop_cum_all,
+ret_thca_prop_cum_all)
+
+all_tacc3_prop_cum_all <- cbind(tacc3_blca_prop_cum_all,
+tacc3_brca_prop_cum_all,
+tacc3_cesc_prop_cum_all,
+tacc3_esca_prop_cum_all,
+tacc3_gbm_prop_cum_all,
+tacc3_hnsc_prop_cum_all,
+tacc3_kirp_prop_cum_all,
+tacc3_laml_prop_cum_all,
+tacc3_lgg_prop_cum_all,
+tacc3_lihc_prop_cum_all,
+tacc3_luad_prop_cum_all,
+tacc3_lusc_prop_cum_all,
+tacc3_stad_prop_cum_all)
+
+all_tfe3_prop_cum_all <- cbind(tfe3_kirc_prop_cum_all,
+tfe3_kirp_prop_cum_all,
+tfe3_ucec_prop_cum_all)
+
+```
+
+Get true positives for each gene at recount3 exon as per Table 2.
+
+```{r}
+get_tp <- function(gene, df) {
+  ids <- get_known_ids_new(gene) #Generate rail_ids known to contain fusion genes
+  subset(df, rownames(df) %in% ids) #Subset to known fusion gene samples
+}
+
+#df input Z scores
+diff_sub_all_ids(df, n) {
+  new_df <- as.data.frame(df[n,] > 3) #n is the most common fusion breakpoint, see Table 2 
+  all_ids <- as.data.frame(apply(
+    new_df, 1, 
+    function(u) paste( names(which(u))) 
+  ))
+  rownames(all_ids) <- all_ids[,1]
+  colnames(all_ids) <- "Significant"
+  all_ids
+}
+```
+
+And false positives from the get_tp output, using base R setdiff(), e.g. 
+```{r}
+setdiff(all_tfe3_prop_cum_all, get_tp(all_tfe3_prop_cum_all)) #Fetches significant samples that do not contain fusion genes
+```
+
+The full list of true positives is available from file truepos_prop_cum.csv
+The full list of false positives is avaiable from file falsepos_prop_cum.csv
+

@@ -1,0 +1,8 @@
+citation(recount3)
+citation(snapcount)
+citation(tidyverse)
+citation(dplyr)
+citation(reshape2)
+citation(ggplot2)
+citation(workflowr)
+citation(patchwork)

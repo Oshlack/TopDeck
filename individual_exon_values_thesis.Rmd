@@ -1,0 +1,185 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+TCGA samples for the ten test genes across their corresponding cancer types (as per Tables 1 and 2, and Supplementary Table 8) determined to have a significant change in individual exon expression at the most common fusion breakpoint (Table 2). 
+
+The samples were calculated using function, which generated all true and false positive values.
+```{r}
+#For 3' genes on the negative strand
+function(gene, project_id) {
+  df <- raw_exon_counts_neg(gene)
+  proj_df <- subset_project_neg(gene, project_id, df)
+  kbp_df <- norm_length_neg(gene, proj_df)
+  diff_df <- diff_calc(kbp_df)
+  diff_auc_df <- norm_auc_neg(gene, project_id, diff_df)
+  all_z <- z_calc(diff_auc_df)
+  all_z
+}
+
+#For 3' genes on the positive strand
+get_all_sig_z_diff_pos <- function(gene, project_id) {
+  df <- raw_exon_counts(gene)
+  proj_df <- subset_project(gene, project_id, df)
+  kbp_df <- norm_length(gene, proj_df)
+  diff_df <- diff_calc(kbp_df)
+  diff_auc_df <- norm_auc(gene, project_id, diff_df)
+  all_z <- z_calc(diff_auc_df)
+  all_z
+}
+```
+
+All ten test genes by corresponding cancer type:
+```{r}
+alk_blca_diff_all <- get_all_sig_z_diff("ALK", "TCGA-BLCA")
+alk_kirp_diff_all <- get_all_sig_z_diff("ALK", "TCGA-KIRP")
+alk_luad_diff_all <- get_all_sig_z_diff("ALK", "TCGA-LUAD")
+alk_read_diff_all <- get_all_sig_z_diff("ALK", "TCGA-READ")
+alk_sarc_diff_all <- get_all_sig_z_diff("ALK", "TCGA-SARC")
+alk_skcm_diff_all <- get_all_sig_z_diff("ALK", "TCGA-SKCM")
+alk_thca_diff_all <- get_all_sig_z_diff("ALK", "TCGA-THCA")
+
+erg_cesc_diff_all <- get_all_sig_z_diff("ERG", "TCGA-CESC")
+erg_lgg_diff_all <- get_all_sig_z_diff("ERG", "TCGA-LGG")
+erg_paad_diff_all <- get_all_sig_z_diff("ERG", "TCGA-PAAD")
+erg_pcpg_diff_all <- get_all_sig_z_diff("ERG", "TCGA-PCPG")
+erg_prad_diff_all <- get_all_sig_z_diff("ERG", "TCGA-PRAD")
+
+etv1_lgg_diff_all <- get_all_sig_z_diff("ETV1", "TCGA-LGG")
+etv1_prad_diff_all <- get_all_sig_z_diff("ETV1", "TCGA-PRAD")
+
+maml3_brca_diff_all <- get_all_sig_z_diff("MAML3", "TCGA-BRCA")
+maml3_lihc_diff_all <- get_all_sig_z_diff("MAML3", "TCGA-LIHC")
+maml3_pcpg_diff_all <- get_all_sig_z_diff("MAML3", "TCGA-PCPG")
+
+ntrk3_brca_diff_all <- get_all_sig_z_diff("NTRK3", "TCGA-BRCA")
+ntrk3_cesc_diff_all <- get_all_sig_z_diff("NTRK3", "TCGA-CESC")
+ntrk3_coad_diff_all <- get_all_sig_z_diff("NTRK3", "TCGA-COAD")
+ntrk3_hnsc_diff_all <- get_all_sig_z_diff("NTRK3", "TCGA-HNSC")
+ntrk3_lgg_diff_all <- get_all_sig_z_diff("NTRK3", "TCGA-LGG")
+ntrk3_paad_diff_all <- get_all_sig_z_diff("NTRK3", "TCGA-PAAD")
+ntrk3_skcm_diff_all <- get_all_sig_z_diff("NTRK3", "TCGA-SKCM")
+ntrk3_thca_diff_all <- get_all_sig_z_diff("NTRK3", "TCGA-THCA")
+
+tfe3_kirc_diff_all <- get_all_sig_z_diff("TFE3", "TCGA-KIRC")
+tfe3_kirp_diff_all <- get_all_sig_z_diff("TFE3", "TCGA-KIRP")
+tfe3_ucec_diff_all <- get_all_sig_z_diff("TFE3", "TCGA-UCEC")
+
+arhgap26_cesc_diff_all <- get_all_sig_z_diff_pos("ARHGAP26", "TCGA-CESC")
+arhgap26_hnsc_diff_all <- get_all_sig_z_diff_pos("ARHGAP26", "TCGA-HNSC")
+arhgap26_luad_diff_all <- get_all_sig_z_diff_pos("ARHGAP26", "TCGA-LUAD")
+arhgap26_lusc_diff_all <- get_all_sig_z_diff_pos("ARHGAP26", "TCGA-LUSC")
+arhgap26_sarc_diff_all <- get_all_sig_z_diff_pos("ARHGAP26", "TCGA-SARC")
+arhgap26_stad_diff_all <- get_all_sig_z_diff_pos("ARHGAP26", "TCGA-STAD")
+
+rara_brca_diff_all <- get_all_sig_z_diff_pos("RARA", "TCGA-BRCA")
+rara_cesc_diff_all <- get_all_sig_z_diff_pos("RARA", "TCGA-CESC")
+rara_gbm_diff_all <- get_all_sig_z_diff_pos("RARA", "TCGA-GBM")
+rara_laml_diff_all <- get_all_sig_z_diff_pos("RARA", "TCGA-LAML")
+rara_ov_diff_all <- get_all_sig_z_diff_pos("RARA", "TCGA-OV")
+rara_pcpg_diff_all <- get_all_sig_z_diff_pos("RARA", "TCGA-PCPG")
+rara_read_diff_all <- get_all_sig_z_diff_pos("RARA", "TCGA-READ")
+rara_stad_diff_all <- get_all_sig_z_diff_pos("RARA", "TCGA-STAD")
+
+ret_brca_diff_all <- get_all_sig_z_diff_pos("RET", "TCGA-BRCA")
+ret_coad_diff_all <- get_all_sig_z_diff_pos("RET", "TCGA-COAD")
+ret_laml_diff_all <- get_all_sig_z_diff_pos("RET", "TCGA-LAML")
+ret_luad_diff_all <- get_all_sig_z_diff_pos("RET", "TCGA-LUAD")
+ret_ov_diff_all <- get_all_sig_z_diff_pos("RET", "TCGA-OV")
+ret_thca_diff_all <- get_all_sig_z_diff_pos("RET", "TCGA-THCA")
+
+tacc3_blca_diff_all <- get_all_sig_z_diff_pos("TACC3", "TCGA-BLCA")
+tacc3_brca_diff_all <- get_all_sig_z_diff_pos("TACC3", "TCGA-BRCA")
+tacc3_cesc_diff_all <- get_all_sig_z_diff_pos("TACC3", "TCGA-CESC")
+tacc3_esca_diff_all <- get_all_sig_z_diff_pos("TACC3", "TCGA-ESCA")
+tacc3_gbm_diff_all <- get_all_sig_z_diff_pos("TACC3", "TCGA-GBM")
+tacc3_hnsc_diff_all <- get_all_sig_z_diff_pos("TACC3", "TCGA-HNSC")
+tacc3_kirp_diff_all <- get_all_sig_z_diff_pos("TACC3", "TCGA-KIRP")
+tacc3_laml_diff_all <- get_all_sig_z_diff_pos("TACC3", "TCGA-LAML")
+tacc3_lgg_diff_all <- get_all_sig_z_diff_pos("TACC3", "TCGA-LGG")
+tacc3_lihc_diff_all <- get_all_sig_z_diff_pos("TACC3", "TCGA-LIHC")
+tacc3_luad_diff_all <- get_all_sig_z_diff_pos("TACC3", "TCGA-LUAD")
+tacc3_lusc_diff_all <- get_all_sig_z_diff_pos("TACC3", "TCGA-LUSC")
+tacc3_stad_diff_all <- get_all_sig_z_diff_pos("TACC3", "TCGA-STAD")
+```
+
+Merge each 3' gene across cancer types into one dataframe per cancer type. Saved as Rdata file all_diff_objects.Rdata
+```{r}
+all_alk_diff_all <- cbind(alk_blca_diff_all,
+alk_kirp_diff_all,
+alk_luad_diff_all,
+alk_read_diff_all,
+alk_sarc_diff_all,
+alk_skcm_diff_all,
+alk_thca_diff_all)
+
+all_arhgap26_diff_all <- cbind(arhgap26_cesc_diff_all,
+arhgap26_hnsc_diff_all,
+arhgap26_luad_diff_all,
+arhgap26_lusc_diff_all,
+arhgap26_sarc_diff_all,
+arhgap26_stad_diff_all)
+
+all_erg_diff_all <- cbind(erg_cesc_diff_all,
+erg_lgg_diff_all,
+erg_paad_diff_all,
+erg_pcpg_diff_all,
+erg_prad_diff_all)
+
+all_etv1_diff_all <- cbind(etv1_lgg_diff_all,
+etv1_prad_diff_all)
+
+all_maml3_diff_all <- cbind(maml3_brca_diff_all,
+maml3_lihc_diff_all,
+maml3_pcpg_diff_all)
+
+all_ntrk3_diff_all <- cbind(ntrk3_brca_diff_all,
+ntrk3_cesc_diff_all,
+ntrk3_coad_diff_all,
+ntrk3_hnsc_diff_all,
+ntrk3_lgg_diff_all,
+ntrk3_paad_diff_all,
+ntrk3_skcm_diff_all,
+ntrk3_thca_diff_all)
+
+all_rara_diff_all <- cbind(rara_brca_diff_all,
+rara_cesc_diff_all,
+rara_gbm_diff_all,
+rara_laml_diff_all,
+rara_ov_diff_all,
+rara_pcpg_diff_all,
+rara_read_diff_all,
+rara_stad_diff_all)
+
+all_ret_diff_all <- cbind(ret_brca_diff_all,
+ret_coad_diff_all,
+ret_laml_diff_all,
+ret_luad_diff_all,
+ret_ov_diff_all,
+ret_thca_diff_all)
+
+all_tacc3_diff_all <- cbind(tacc3_blca_diff_all,
+tacc3_brca_diff_all,
+tacc3_cesc_diff_all,
+tacc3_esca_diff_all,
+tacc3_gbm_diff_all,
+tacc3_hnsc_diff_all,
+tacc3_kirp_diff_all,
+tacc3_laml_diff_all,
+tacc3_lgg_diff_all,
+tacc3_lihc_diff_all,
+tacc3_luad_diff_all,
+tacc3_lusc_diff_all,
+tacc3_stad_diff_all)
+
+all_tfe3_diff_all <- cbind(tfe3_kirc_diff_all,
+tfe3_kirp_diff_all,
+tfe3_ucec_diff_all)
+```
+
+Get true  and false positives for each gene at recount3 exon as per Table 2. See average_exon_values_thesis.Rmd for process.
+
+The full list of true positives is available from file truepos_diff.csv
+The full list of false positives is avaiable from file falsepos_diff.csv
+
