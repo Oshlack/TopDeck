@@ -1,0 +1,918 @@
+---
+title: "Filtering to cancers of interest"
+output: html_notebook
+---
+
+So far the overexpression analysis I have done has focussed on samples within a specific tissue/cancer type. However, we also want to find a way to filter to cancer types of interest.
+
+
+Can we do this by identifying lowly expressed cancers?
+
+-Are fusions in cancers that are upregulated compared to their gtex counterpart?
+##Available comparisons
+-comparisons available
+```{r}
+tacc3_combined %>%
+  ggplot(aes(x = has_cancer, y = log2_auc_norm, fill = Tissue)) +
+  geom_boxplot() +
+  theme(legend.position = "none") +
+  facet_wrap(~ Tissue)
+```
+-should TCGA normal and GTEx be combined to compare to cancer data? 
+-18 comparisons available with TCGA and GTEx (3 with GTEx that don't have TCGA normal)
+-20 comparisons between TCGA cancer and TCGA normal (adds 5 to comparison to GTEx)
+-3 tissues with no comparison data available
+
+-another issue, some tissues cover multiple cancers. How can we split this so that each cancer is compared to the corresponding tissue?
+-would expect an ANOVA type analysis could be used - except different tissues have different numbers of groups to take into account
+-was beyond the scope of this project
+-should tcga normal and gtex be compiled?
+```{r}
+tacc3_combined %>%
+  mutate(is_cancer = ifelse(has_cancer == "Cancer", T, F)) %>%
+  ggplot(aes(x = Tissue, y = log2_auc_norm, fill = is_cancer)) +
+  geom_boxplot() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) 
+  
+tacc3_combined %>%
+  mutate(is_cancer = ifelse(has_cancer == "Cancer", T, F)) %>%
+  ggplot(aes(x = Tissue, y = log2_auc_norm, fill = is_cancer)) +
+  geom_boxplot() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) 
+```
+
+##Comparing TCGA and GTEx (workflow) with a 1 sided Wilcoxon test
+```{r}
+compare_tcga_gtex <- function(gene) {
+  counts <- gene
+  counts <- counts %>% 
+  filter(has_cancer != "Normal") %>% 
+  filter(Tissue != "Bile Duct", Tissue != "Colorectal", Tissue != "Eye", Tissue != "Head and Neck", Tissue != "Lymph Nodes", Tissue != "Pleura", Tissue != "Soft Tissue", Tissue != "Thymus") %>%
+  group_by(has_cancer) %>%
+  split(f = list(as.character(.$Tissue))) %>%
+  map(~ wilcox.test(log2_auc_norm ~ has_cancer, data = .x)$p.value) %>%
+  unlist(., .$Tissue) %>%
+  data.frame(.)
+}
+
+compare_tcga_gtex_sided <- function(gene) {
+  counts <- gene
+  counts <- counts %>% 
+  filter(has_cancer != "Normal") %>% 
+  filter(Tissue != "Bile Duct", Tissue != "Colorectal", Tissue != "Eye", Tissue != "Head and Neck", Tissue != "Lymph Nodes", Tissue != "Pleura", Tissue != "Soft Tissue", Tissue != "Thymus") %>%
+  group_by(has_cancer) %>%
+  split(f = list(as.character(.$Tissue))) %>%
+  map(~ wilcox.test(log2_auc_norm ~ has_cancer, data = .x, alternative = "greater")$p.value) %>%
+  unlist(., .$Tissue) %>%
+  data.frame(.)
+}
+```
+
+```{r}
+compare_tcga_gtex_heat <- cbind(compare_tcga_gtex(erg_combined), compare_tcga_gtex(maml3_combined), compare_tcga_gtex(tfe3_combined), compare_tcga_gtex(rara_combined), compare_tcga_gtex(tacc3_combined), compare_tcga_gtex(ret_combined), compare_tcga_gtex(etv1_combined), compare_tcga_gtex(ntrk3_combined), compare_tcga_gtex(arhgap26_combined))
+
+colnames(compare_tcga_gtex_heat) <- c("ERG", "MAML3", "TFE3", "RARA", "TACC3", "RET", "ETV1", "NTRK3", "ARHGAP26")
+compare_tcga_gtex_heat <- data.frame(t(compare_tcga_gtex_heat))
+compare_tcga_gtex_heat
+```
+
+```{r}
+compare_tcga_gtex_heat_sided <- cbind(compare_tcga_gtex_sided(erg_combined), compare_tcga_gtex_sided(maml3_combined), compare_tcga_gtex_sided(tfe3_combined), compare_tcga_gtex_sided(rara_combined), compare_tcga_gtex_sided(tacc3_combined), compare_tcga_gtex_sided(ret_combined), compare_tcga_gtex_sided(etv1_combined), compare_tcga_gtex_sided(ntrk3_combined), compare_tcga_gtex_sided(arhgap26_combined))
+
+colnames(compare_tcga_gtex_heat_sided) <- c("ERG", "MAML3", "TFE3", "RARA", "TACC3", "RET", "ETV1", "NTRK3", "ARHGAP26")
+compare_tcga_gtex_heat_sided <- data.frame(t(compare_tcga_gtex_heat_sided))
+compare_tcga_gtex_heat_sided
+```
+TACC3 fusions were in tissues that were overexpressed compared to GTEx. However, so were most of the tissues.
+
+```{r}
+compare_tcga_gtex_heat %>% melt(.) %>%
+  mutate(gene = rep(c("ERG", "MAML3", "TFE3", "RARA", "TACC3", "RET", "ETV1", "NTRK3", "ARHGAP26"), times = 18), .before = variable) %>%
+  mutate(groups = cut(.$value, breaks = c(1, 0.05, 0))) %>%
+  ggplot(., aes(gene, variable, fill = groups)) +
+  geom_tile(colour = "white", linetype = 1) +
+  scale_fill_discrete(breaks = levels(groups)) +
+  labs(title = "TCGA vs GTEx wilcox test", subtitle = "Red = p < 0.05")
+
+compare_tcga_gtex_heat_sided %>% melt(.) %>%
+  mutate(gene = rep(c("ERG", "MAML3", "TFE3", "RARA", "TACC3", "RET", "ETV1", "NTRK3", "ARHGAP26"), times = 18), .before = variable) %>%
+  mutate(groups = cut(.$value, breaks = c(1, 0.05, 0.001, 0))) %>%
+  ggplot(., aes(gene, variable, fill = groups)) +
+  geom_tile(colour = "white", linetype = 1) +
+  scale_fill_discrete(breaks = levels(groups)) +
+  labs(title = "Directional TCGA vs GTEx wilcox test", subtitle = "Green and red = p < 0.05")
+```
+
+
+-Are fusions in cancers where the tissue is not normally expressed?
+
+These are some of the questions driving this analysis.
+
+So how can we determine if a cancer/tissue is normally expressed or not? - do we set an expression threshold?
+##defining low expression
+
+-for an extra layer of complexity, if we want to copy an approach that filters out lowly expressed genes using a log2 expression threshold, we have to consider the differences in normalisation approaches.
+
+#approach 1: recount2
+-on scaled data (not log2)
+normalised = (coverage/AUC) *target library size (assumed 40 million)
+filter: mean > 0.5
+(however we have not been scaling by 40 million - we've been scaling by 1 million)
+
+#approach 2: gene distribution paper
+-filters lowly expressed genes via: >25% of samples log2 value < 1
+-unclear what method of normalisation used
+
+#approach 3: edgeR filter by expression function
+https://f1000research.com/articles/5-1408
+-on cpm data (counts per million)
+-gene needs 10 read counts minimum in certain number of samples
+-10/median library size in millions = threshold
+-keep genes that have cpm above threshold in >= 3 samples
+
+-all of these methods are designed to for DEG analysis which includes all genes - important to filter out ones of no biological interest
+-however this method takes a gene as input - presumably one of biological importance
+-difference between a gene that is not expressed and one that is lowly expressed
+```{r}
+tacc3_combined %>%
+  ggplot(aes(x = Tissue, y = log2_auc_norm, fill = has_cancer)) +
+  geom_boxplot() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  facet_wrap(~ has_cancer)
+```
+
+
+##applying approaches: TACC3 as case study
+
+#approach 1: recount2
+```{r}
+tacc3_combined %>%
+  group_by(Tissue, cancer_status) %>%
+  summarise(mean_norm = mean(auc_norm)) %>%
+  filter(mean_norm < 0.5)
+
+tacc3_combined %>%
+  group_by(Tissue, cancer_status) %>%
+  summarise(mean_log_norm = mean(log2_auc_norm)) %>%
+  filter(mean_log_norm < 0.5)
+```
+-all means higher than 0.5, doesn't filter out any cancers
+
+```{r}
+all_genes %>%
+  group_by(gene, Tissue, cancer_status) %>%
+  summarise(mean_norm = mean(auc_norm)) %>%
+  filter(mean_norm < 0.5)
+
+all_genes %>%
+  group_by(gene, Tissue, cancer_status) %>%
+  summarise(mean_norm = mean(auc_norm*40)) %>%
+  filter(mean_norm < 0.5) 
+```
+-filters out 68 cases total:
+-mostly ALK
+-if I scale by 40 million - like it should be - only filter out 1 case
+
+#approach2: gene distrib
+```{r}
+tacc3_combined %>%
+  group_by(Tissue, cancer_status) %>%
+  filter(quant25 <= 1) %>%
+  distinct(Tissue)
+```
+-filters out GTEx muscle
+```{r}
+all_genes %>%
+  ungroup() %>%
+  group_by(gene, Tissue, cancer_status) %>%
+  filter(quant25 <= 1) %>%
+  distinct(gene) 
+```
+-filters out 241 cases
+
+#approach3: edgeR
+```{r}
+tacc3_counts %>%
+  group_by(Tissue, cancer_status) %>%
+  mutate(median_auc = 10/(median(auc)/1e6)) %>%
+  filter(auc_norm > median_auc) %>%
+  summarise(n = n()) %>%
+  filter(n < 3)
+gtex_tacc3_counts %>%
+  group_by(Tissue, cancer_status) %>%
+  mutate(median_auc = 10/(median(auc)/1e6)) %>%
+  filter(auc_norm > median_auc) %>%
+  summarise(n = n()) %>%
+  filter(n < 3)
+```
+-filters out 3 normal tissues: skin, soft tissue, thymus
+```{r}
+all_genes %>%
+  filter(has_cancer != "GTEx") %>%
+  group_by(gene, Tissue, cancer_status) %>%
+  mutate(median_auc = 10/(median(Counts/auc_norm)/1e6)) %>%
+  filter(auc_norm > median_auc) %>%
+  summarise(n = n()) %>%
+  filter(n < 3)
+all_genes %>%
+  filter(has_cancer == "GTEx") %>%
+  group_by(Tissue, cancer_status) %>%
+  mutate(median_auc = 10/(median(Counts/auc_norm)/1e6)) %>%
+  filter(auc_norm > median_auc) %>%
+  summarise(n = n()) %>%
+  filter(n < 3)
+```
+-filters out 7 cases
+
+#discussion
+These methods aren't actually really what I want - they don't filter out enough cancers to really be effective
+
+
+
+
+#more precise comparisons between cancers
+log fold change?
+
+#log2 fold change
+```{r}
+tacc3_combined %>%
+  ungroup() %>%
+  group_by(cancer_status) %>%
+  mutate(status_median_auc = median(log2_auc_norm)) %>%
+  ungroup() %>%
+  group_by(cancer_status, Project_ID) %>%
+  mutate(median_auc = median(log2_auc_norm), fc_status = median_auc - status_median_auc) %>%
+  distinct(fc_status) %>%
+  ggplot(aes(x = Project_ID, y = fc_status, colour = cancer_status)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+#this is difference between the cancers
+tacc3_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  mutate(status_median_auc = median(log2_auc_norm)) %>%
+  group_by(Project_ID) %>%
+  mutate(median_auc = median(log2_auc_norm), fc_status = median_auc - status_median_auc) %>%
+  distinct(fc_status) %>%
+  ggplot(aes(x = Project_ID, y = fc_status)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+#just cancers with fusions
+tacc3_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  mutate(status_median_auc = median(log2_auc_norm)) %>%
+  group_by(Project_ID) %>%
+  mutate(median_auc = median(log2_auc_norm), fc_status = median_auc - status_median_auc) %>%
+  filter(Tissue == "Bladder" | Tissue == "Breast" | Tissue == "Cervix" | Tissue == "Esophagus" | Tissue == "Brain" | Tissue == "Head and Neck" | Tissue == "Kidney" | Tissue == "Blood" | Tissue == "Liver" | Tissue == "Lung" | Tissue == "Stomach") %>%
+  distinct(fc_status) %>%
+  ggplot(aes(x = Project_ID, y = fc_status)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+#non fusion cancers
+tacc3_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  mutate(status_median_auc = median(log2_auc_norm)) %>%
+  group_by(Project_ID) %>%
+  mutate(median_auc = median(log2_auc_norm), fc_status = median_auc - status_median_auc) %>%
+  filter(Tissue != "Bladder" | Tissue != "Breast" | Tissue != "Cervix" | Tissue != "Esophagus" | Tissue != "Brain" | Tissue != "Head and Neck" | Tissue != "Kidney" | Tissue != "Blood" | Tissue != "Liver" | Tissue != "Lung" | Tissue != "Stomach") %>%
+  distinct(fc_status) %>%
+  ggplot(aes(x = Project_ID, y = fc_status)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+  
+```
+
+no I want median(cancer) - median(normal) - what I've got here is their distance from overall tissue median
+```{r}
+tacc3_combined %>%
+  ungroup() %>%
+  filter(has_cancer != "Normal") %>%
+  group_by(Tissue) %>%
+  mutate(status_median_auc = median(log2_auc_norm)) %>%
+  ungroup() %>%
+  group_by(Tissue, has_cancer) %>%
+  mutate(median_auc = median(log2_auc_norm), fc_status = median_auc - status_median_auc) %>%
+  distinct(fc_status, status_median_auc) %>%
+  ggplot(aes(x = Tissue, y = fc_status, colour = has_cancer)) +
+  geom_point() +
+  geom_point(aes(x = Tissue, y = status_median_auc), colour = "black") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+using known fusion rate?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##end of explanation
+
+
+
+
+
+
+
+
+
+
+-odd it's not showing the combined
+
+-let's try using uni approach
+```{r}
+model_1 <- lm(log2_auc_norm ~ fusion + is_expressed + fusion:is_expressed, data = filter(erg_combined, cancer_status != "GTEx", cancer_status != "Normal"), contrasts = list(fusion = "contr.sum", is_expressed = "contr.sum"))
+
+model_1
+
+anova(model_1, type = 3) #weird this should work: error is $ operator invalid for atomic vectors
+```
+
+
+
+#chisquare analysis
+http://www.sthda.com/english/wiki/chi-square-test-of-independence-in-r
+maybe chi-square contingency analysis? compares frequencies of 2 categorical explan and response
+      say that explan is is_expressed, and response is fusion
+      it tests null hyp that row and column values indep, alt not indep
+
+#cancer: fusion vs is expressed
+```{r}
+contingency_1 <- table(filter(erg_combined, cancer_status != "GTEx", cancer_status != "Normal")$fusion, filter(erg_combined, cancer_status != "GTEx", cancer_status != "Normal")$is_expressed)
+chisq.test(contingency_1)
+```
+```{r}
+all_genes$fusion <- as.factor(all_genes$fusion)
+all_genes$is_expressed <- as.factor(all_genes$is_expressed)
+all_genes
+levels(all_genes$is_expressed)
+```
+
+```{r}
+all_genes %>%
+  filter(has_cancer == "Cancer") %>%
+  distinct
+
+all_genes %>%
+  filter(has_cancer == "Cancer") %>%
+  split(f = list(as.character(.$gene))) %>%
+  map(~chisq.test(.x$fusion, .x$is_expressed))
+```
+-not all of them filter out cancers - so won't work like this
+
+-so this says is assoc?
+```{r}
+#install.packages("corrplot")
+library(corrplot)
+corrplot(chisq.test(contingency_1)$residuals, is.cor = FALSE)
+```
+-positive residuals blue - position association
+-negative residuals red - no association
+-so fusion is associated with cancer being normally expressed
+
+-yay I think that told me something good
+
+#what if we do fusion and gtex is expressed
+-oh that didn't work - wants stuff of the same length
+```{r}
+contingency_2 <- table(filter(expression_erg, cancer_status != "GTEx", cancer_status != "Normal")$fusion, filter(expression_erg, cancer_status == "GTEx")$is_expressed)
+chisq.test(contingency_2)
+corrplot(chisq.test(contingency_2)$residuals, is.cor = FALSE)
+```
+
+#tcga and gtex?
+no same problem
+```{r}
+contingency_3 <- table(filter(expression_erg, cancer_status != "GTEx", cancer_status != "Normal")$is_expressed, filter(expression_erg, cancer_status == "GTEx")$is_expressed)
+chisq.test(contingency_3)
+corrplot(chisq.test(contingency_3)$residuals, is.cor = FALSE)
+```
+
+#thoughts on application
+-not sure if I want to split this by cancer type?
+-I need to get the factorial anova working
+
+how can I work around problem?
+  -maybe I could add to the fusion and is_expressed columns so covers gtex and normal and cancer
+  -or maybe that's the only test I want for this
+```{r}
+expression_erg 
+```
+
+
+
+```{r}
+all_genes %>%
+  ggplot(aes(x = gene, fill = fusion)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~ is_expressed)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+#early break
+expression_function_mutate(erg_combined) %>% filter(quant25 < 1) %>% distinct(fusion) #1 (cancer)
+expression_function_mutate(maml3_combined) %>% filter(quant25 < 1) %>% distinct(fusion) #2 (cancer)
+expression_function_mutate(tfe3_combined) %>% filter(quant25 < 1) %>% distinct(fusion) #nothing
+expression_function_mutate(tmprss2_combined) %>% filter(quant25 < 1) %>% distinct(fusion) #kirp, (25 cases including normal)
+expression_function_mutate(rara_combined) %>% filter(quant25 < 1) %>% distinct(fusion) # nothing
+#middle break
+expression_function_mutate(tacc3_combined) %>% filter(quant25 < 1) %>% distinct(fusion) #nothing
+expression_function_mutate(ret_combined) %>% filter(quant25 < 1) %>% distinct(fusion) #fusion in thyroid, colon, ovarian, lung, aml (49 cases)
+expression_function_mutate(etv1_combined) %>% filter(quant25 < 1) %>% distinct(fusion) #7
+expression_function_mutate(ntrk3_combined) %>% filter(quant25 < 1) %>% distinct(fusion) #fusion in breast invasive, colon, skin, pancreas, cervix, head and neck, 43 total
+expression_function_mutate(alk_combined) %>% filter(quant25 < 1) %>% distinct(fusion) #fusion in thyroid, sarcoma, skin, bladder, krp, lung a, rectum, 62 cases
+expression_function_mutate(arhgap26_combined) %>% filter(quant25 < 1) %>% distinct(fusion) #nothing
+```
+hmmm not sure it's a pattern but it's something
+only 1 fusions in cancers that had early breakpoints and 25% < 1
+-not that early breakpoints had a lot of cancers with exp < 1, 2 genes had 0, tmprss2 had 25 cases though
+
+same as early, 2 middle genes had nothing
+-but there were more cases in the other genes - including in fusions
+-could just be very gene specific
+-would need to compare more than 5 genes for each to really know
+-maybe I should try it by tissue so get the gtex - see if it happens there
+-but yeah if I followed the paper - these are the cancers I wouldn't look at
+
+-let's look more closely at the cancers with fusions where quant25 < 1
+tmprss2 - kidney renal pap - nothing really interesting
+ret - thyroid - hey hey it's bimodalish - wasn't picked up by test but wilcox test showed them different
+ret - colon - peak is like at 0, but fusion is towards the end - also beyond gtex
+ret - ovary - again not bimodal by the test but does have that dip - which is where the fusion is
+ret - lung - again it's a little bit bimodal - this time fusions are in the dip
+ret - blood - yeah that's the bad <0 one - but again distrib has that little dip
+ntrk3 - breast - it's at the end past the gtex
+ntrk3 - colon - most of it is very low, fusion at end
+ntrk3 - skin - also has a dip - fusion is at very end though - way past dip - dip is at around 0
+ntrk3 - pancreas - big tcga and gtex overlap - fusion at v. end
+ntrk3 - cervix - fusion at very end - part way through the gtex
+ntrk3 - head mostly towards end
+alk- 
+
+
+anyway what do I want to do with this info?
+well for one I think I want a more subtle test for bimodality
+a way just to show dips
+because I'm seeing fusions at dips
+also whne bulk of samples low expressed - anything high is automatically interesting - want a way to flag them
+```{r}
+tmprss2_counts %>%
+  filter(Cancer == "Kidney Renal Papillary Cell Carcinoma") %>%
+  ggplot(aes(x = log2_auc_norm, fill = cancer_status)) +
+  geom_density(alpha = 0.4) +
+  geom_vline(aes(xintercept = log2_auc_norm), data=. %>% filter(fusion == "Fusion")) +
+  labs(title = "TMPRSS2 - KIRP")
+
+ret_counts %>%
+  filter(Cancer == "Thyroid Carcinoma") %>%
+  ggplot(aes(x = log2_auc_norm, fill = cancer_status)) +
+  geom_density(alpha = 0.4) +
+  geom_vline(aes(xintercept = log2_auc_norm), data=. %>% filter(fusion == "Fusion")) +
+  labs(title = "RET - Thyroid")
+
+ret_counts %>%
+  filter(Cancer == "Colon Adenocarcinoma") %>%
+  ggplot(aes(x = log2_auc_norm, fill = cancer_status)) +
+  geom_density(alpha = 0.4) +
+  geom_vline(aes(xintercept = log2_auc_norm), data=. %>% filter(fusion == "Fusion")) +
+  labs(title = "RET - Colon")
+
+ret_counts %>%
+  filter(Cancer == "Ovarian Serous Cystadenocarcinoma") %>%
+  ggplot(aes(x = log2_auc_norm, fill = cancer_status)) +
+  geom_density(alpha = 0.4) +
+  geom_vline(aes(xintercept = log2_auc_norm), data=. %>% filter(fusion == "Fusion")) +
+  labs(title = "RET - Ovary")
+
+ret_counts %>%
+  filter(Cancer == "Lung Adenocarcinoma") %>%
+  ggplot(aes(x = log2_auc_norm, fill = cancer_status)) +
+  geom_density(alpha = 0.4) +
+  geom_vline(aes(xintercept = log2_auc_norm), data=. %>% filter(fusion == "Fusion")) +
+  labs(title = "RET - Lung Adenocarcinoma")
+
+ret_counts %>%
+  filter(Cancer == "Acute Myeloid Leukemia") %>%
+  ggplot(aes(x = log2_auc_norm, fill = cancer_status)) +
+  geom_density(alpha = 0.4) +
+  geom_vline(aes(xintercept = log2_auc_norm), data=. %>% filter(fusion == "Fusion")) +
+  labs(title = "RET - Blood")
+
+ntrk3_counts %>%
+  filter(Cancer == "Breast Invasive Carcinoma") %>%
+  ggplot(aes(x = log2_auc_norm, fill = cancer_status)) +
+  geom_density(alpha = 0.4) +
+  geom_vline(aes(xintercept = log2_auc_norm), data=. %>% filter(fusion == "Fusion")) +
+  labs(title = "NTRK3 - Breast")
+
+ntrk3_counts %>%
+  filter(Cancer == "Colon Adenocarcinoma") %>%
+  ggplot(aes(x = log2_auc_norm, fill = cancer_status)) +
+  geom_density(alpha = 0.4) +
+  geom_vline(aes(xintercept = log2_auc_norm), data=. %>% filter(fusion == "Fusion")) +
+  labs(title = "NTRK3 - Colon")
+
+ntrk3_counts %>%
+  filter(Cancer == "Skin Cutaneous Melanoma") %>%
+  ggplot(aes(x = log2_auc_norm, fill = cancer_status)) +
+  geom_density(alpha = 0.4) +
+  geom_vline(aes(xintercept = log2_auc_norm), data=. %>% filter(fusion == "Fusion")) +
+  labs(title = "NTRK3 - Skin")
+
+ntrk3_counts %>%
+  filter(Cancer == "Pancreatic Adenocarcinoma") %>%
+  ggplot(aes(x = log2_auc_norm, fill = cancer_status)) +
+  geom_density(alpha = 0.4) +
+  geom_vline(aes(xintercept = log2_auc_norm), data=. %>% filter(fusion == "Fusion")) +
+  labs(title = "NTRK3 - Pancreas")
+
+ntrk3_counts %>%
+  filter(Cancer == "Cervical Squamous Cell Carcinoma and Endocervical Adenocarcinoma") %>%
+  ggplot(aes(x = log2_auc_norm, fill = cancer_status)) +
+  geom_density(alpha = 0.4) +
+  geom_vline(aes(xintercept = log2_auc_norm), data=. %>% filter(fusion == "Fusion")) +
+  labs(title = "NTRK3 - Cervix")
+
+ntrk3_counts %>%
+  filter(Cancer == "Head and Neck Squamous Cell Carcinoma") %>%
+  ggplot(aes(x = log2_auc_norm, fill = cancer_status)) +
+  geom_density(alpha = 0.4) +
+  geom_vline(aes(xintercept = log2_auc_norm), data=. %>% filter(fusion == "Fusion")) +
+  labs(title = "NTRK3 - Head")
+```
+
+
+
+
+#this work
+
+
+
+```{r}
+expression_erg <- expression_function_mutate2(erg_combined)
+expression_erg 
+```
+
+#visualisation and functionality
+
+```{r}
+erg_combined %>%
+  ggplot(aes(x = is_expressed, y = log2_auc_norm, fill = cancer_status)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 1) +
+  facet_wrap(~ Tissue)
+
+erg_combined %>%
+  ggplot(aes(x = is_expressed, y = log2_auc_norm, fill = cancer_status)) +
+  geom_violin() +
+  geom_hline(yintercept = 1) +
+  facet_wrap(~ Tissue)
+```
+
+```{r}
+all_genes %>%
+  filter(is_expressed == "Not normally expressed") %>%
+  ggplot(aes(x = gene, y = log2_auc_norm, fill = cancer_status)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 1) +
+  facet_wrap(~ Tissue)
+
+all_genes %>%
+  filter(is_expressed == "Not normally expressed") %>%
+  ggplot(aes(x = gene, y = log2_auc_norm, fill = cancer_status)) +
+  geom_violin() +
+  geom_hline(yintercept = 1) +
+  facet_wrap(~ Tissue)
+```
+
+-could do an if else: if gene not normally expressed (cancer) - potential fusion anything greater than 1 (overexpressed)
+-see if I can use distribution shape to inform this a bit more
+-also connect to outliers
+
+
+#analysis - where are the fusions?
+-big question: are the fusions in cancers that are normally expressed but the gtex/normal is not?
+```{r}
+all_genes
+```
+
+```{r}
+expression_function_mutate_for_all <- function(gene) {
+  q = c(0.25, 0.5, 0.75)
+  counts <- gene 
+  counts <- counts %>%
+    group_by(gene, Tissue, cancer_status) %>%
+    mutate(min = min(log2_auc_norm),
+            quant25 = quantile(log2_auc_norm, probs = 0.25), 
+            quant50 = quantile(log2_auc_norm, probs = 0.5),
+            quant75 = quantile(log2_auc_norm, probs = 0.75),
+            max = max(log2_auc_norm),
+            outlier = (quant75 + 1.5*(quant75 - quant25)))
+  counts <- counts %>%
+    group_by(gene, Tissue, cancer_status) %>%
+    mutate(is_outlier = ifelse(log2_auc_norm >= outlier, T, F))
+  counts %>% mutate(is_expressed = ifelse(quant25 < 1, "Not normally expressed", "Normally expressed")) 
+}
+```
+
+```{r}
+all_genes <- expression_function_mutate_for_all(all_genes)
+all_genes
+```
+
+```{r}
+all_genes %>%
+  filter(fusion == "Fusion") %>%
+  group_by(gene, Tissue, is_expressed) %>%
+  summarise(n = n(is_expressed))
+```
+
+-this isn't working
+-maybe I want a stat test now
+-I want to know if there's a link between if gene is expressed and fusion -that goes for expressed in cancer, normal, gtex
+-I want to know if there's a link between gene not expressed (more so for cancer) and fusions being outliers - that would be cool
+
+
+-let's try a factorial anova
+fusion and is expressed
+
+```{r}
+expression_erg %>%
+  filter(cancer_status != "GTEx", cancer_status != "Normal") %>%
+  ggplot(aes(x = fusion, y = log2_auc_norm)) +
+  geom_boxplot()
+
+expression_erg %>%
+  filter(cancer_status != "GTEx", cancer_status != "Normal") %>%
+  ggplot(aes(x = is_expressed, y = log2_auc_norm)) +
+  geom_boxplot()
+```
+https://homepages.inf.ed.ac.uk/bwebb/statistics/Factorial_ANOVA_in_R.pdf
+```{r}
+aov_1 = aov(log2_auc_norm ~ fusion * is_expressed, data = filter(expression_erg, cancer_status != "GTEx", cancer_status != "Normal"))
+aov_1
+TukeyHSD(aov_1)
+```
+-odd it's not showing the combined
+
+-let's try using uni approach
+```{r}
+model_1 <- lm(log2_auc_norm ~ fusion + is_expressed + fusion:is_expressed, data = filter(expression_erg, cancer_status != "GTEx", cancer_status != "Normal"), contrasts = list(fusion = "contr.sum", is_expressed = "contr.sum"))
+
+model_1
+
+anova(model_1, type = 3) #weird this should work: error is $ operator invalid for atomic vectors
+```
+maybe it wants them to be a factor?
+I'm probably getting the same error that I got for
+```{r}
+expression_erg_fac <- expression_erg
+expression_erg_fac$fusion <- as.factor(expression_erg_fac$fusion)
+expression_erg_fac$is_expressed <- as.factor(expression_erg_fac$is_expressed)
+```
+
+```{r}
+model_1a <- lm(log2_auc_norm ~ fusion + is_expressed + fusion:is_expressed, data = filter(expression_erg_fac, cancer_status != "GTEx", cancer_status != "Normal"), contrasts = list(fusion = "contr.sum", is_expressed = "contr.sum"))
+
+model_1a
+
+anova(model_1a, type = 3)
+```
+no that didn't fix it
+
+maybe correlation would be a better approach? I think that's for numerical actually
+
+#chisquare analysis
+http://www.sthda.com/english/wiki/chi-square-test-of-independence-in-r
+maybe chi-square contingency analysis? compares frequencies of 2 categorical explan and response
+      say that explan is is_expressed, and response is fusion
+      it tests null hyp that row and column values indep, alt not indep
+
+#cancer: fusion vs is expressed
+```{r}
+contingency_1 <- table(filter(expression_erg, cancer_status != "GTEx", cancer_status != "Normal")$fusion, filter(expression_erg, cancer_status != "GTEx", cancer_status != "Normal")$is_expressed)
+chisq.test(contingency_1)
+```
+-so this says is assoc?
+```{r}
+#install.packages("corrplot")
+#library(corrplot)
+corrplot(chisq.test(contingency_1)$residuals, is.cor = FALSE)
+```
+-positive residuals blue - position association
+-negative residuals red - no association
+-so fusion is associated with cancer being normally expressed
+
+-yay I think that told me something good
+
+#what if we do fusion and gtex is expressed
+-oh that didn't work - wants stuff of the same length
+```{r}
+contingency_2 <- table(filter(expression_erg, cancer_status != "GTEx", cancer_status != "Normal")$fusion, filter(expression_erg, cancer_status == "GTEx")$is_expressed)
+chisq.test(contingency_2)
+corrplot(chisq.test(contingency_2)$residuals, is.cor = FALSE)
+```
+
+#tcga and gtex?
+no same problem
+```{r}
+contingency_3 <- table(filter(expression_erg, cancer_status != "GTEx", cancer_status != "Normal")$is_expressed, filter(expression_erg, cancer_status == "GTEx")$is_expressed)
+chisq.test(contingency_3)
+corrplot(chisq.test(contingency_3)$residuals, is.cor = FALSE)
+```
+
+#thoughts on application
+-not sure if I want to split this by cancer type?
+-I need to get the factorial anova working
+
+how can I work around problem?
+  -maybe I could add to the fusion and is_expressed columns so covers gtex and normal and cancer
+  -or maybe that's the only test I want for this
+```{r}
+expression_erg 
+```
+
+
+
+```{r}
+all_genes %>%
+  ggplot(aes(x = gene, fill = fusion)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~ is_expressed)
+```
+
+
+
+```{r}
+erg_combined %>%
+  ggplot(aes(x = Tissue, y = ))
+```
+
+
+
+```{r}
+#need a loop or apply
+if (expression_erg$quant25 < 1) {
+  print("Not normally expressed")
+} else {
+  print("Normally expressed")
+}
+```
+-would prefer something neat
+
+
+```{r}
+#old version
+#expression_function <- function(gene) {
+  counts <-  gene %>%
+    filter(cancer_status == "Cancer") %>%
+    group_by(Cancer) %>%
+    distinct(Cancer) %>%
+    .[order(.$Cancer),]
+  cancer <- gene %>%
+    filter(cancer_status == "Cancer") %>%
+    split(f = list(as.character(.$Cancer))) %>%
+   map(~quantile(.x$log2_auc_norm)) %>% #it won't let me select a specific quartile
+    unlist(., .$Cancer) %>%
+    data.frame(.)
+  #can i do it for gtex? and then compare?
+}
+```
+
+
+```{r}
+erg_combined %>%
+  filter(cancer_status == "Cancer") %>%
+  split(f = list(as.character(.$Cancer))) %>%
+  map(~rosnerTest(.x$log2_auc_norm, k = 10)$all.stats)  
+  unlist(., .$Cancer) %>%
+  data.frame(.)
+```
+
+
+
+-are the genes with low expression (25% < 1) also more skewed??
+
+```{r}
+all_genes
+```
+
+
+```{r}
+all_genes %>%
+  ggplot(aes(x = gene, y = log2_auc_norm, colour = fusion)) +
+  geom_boxplot(alpha = 0.4) +
+  facet_wrap(~ cancer_status)
+
+all_genes %>% #why is the gtex distrib the exact same for all 10 of these genes???
+  filter(cancer_status == "GTEx") %>%
+  ggplot(aes(x = Tissue, y = log2_auc_norm)) +
+  geom_boxplot(alpha = 0.4) 
+```
+
+
+#can I mess with percentiles?
+```{r}
+tacc3_combined %>% filter(is_expressed == "Not normally expressed") %>% distinct(Tissue, cancer_status)
+```
+-when fusions are in not expressed genes - are they outliers??
+not necessarily
+ret thyroid - 31 not outliers, but 2 outliers
+```{r}
+all_genes %>% filter(fusion == "Fusion", is_expressed == "Not normally expressed") %>% group_by(gene, Cancer, is_outlier) %>% summarise(n())
+```
+
+```{r}
+ret_combined %>%
+  filter(has_cancer == "Cancer") %>%
+  ggplot(aes(x = log2_auc_norm)) +
+  geom_density() +
+  geom_vline(aes(xintercept = log2_auc_norm), data=. %>% filter(fusion == "Fusion"))
+```
+
+#want a way to extract what quantile expression becomes > 1
+```{r}
+all_genes %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(is_expressed == "Not normally expressed") %>%
+  ungroup() %>%
+  group_by(gene, Project_ID) %>%
+  split(f = list(as.character(gene))) %>%
+  map(~quantile(.x))
+```
+
+-maybe if then or something like that?
+when  percentile > 1 - return percentile
+
+```{r}
+quantile(filter(erg_combined, has_cancer == "Cancer", is_expressed == "Not normally expressed")$log2_auc_norm, 1/100)
+```
+
+#identify cancers that are expressed when matching gtex/normal is not
+-can visually id but not able to pull it out yet
+
+-want something that says if the is_expressed matches for the groups, then no change - if don't match, then change
+-kinda like a categorical anova funnily enough
+-think I need to google how to do this
+```{r}
+erg_combined %>%
+  ungroup() %>%
+  group_by(Tissue, cancer_status, is_expressed) %>%
+  distinct(Tissue) %>%
+  .[order(.$Tissue),]
+
+erg_combined %>%
+  ungroup() %>%
+  group_by(Tissue, cancer_status) %>%
+  select(Tissue, cancer_status, is_expressed) %>%
+  distinct(is_expressed) %>%
+  .[order(.$Tissue),] 
+  #mutate(change = cancer_status)
+```
+-erg blood cancer, skin cancer (but normal was expressed)
+
+#another way to identify lowly expressed genes
+https://f1000research.com/articles/5-1408
+-edgeR has a filter by expression function
+-it takes the
+```{r}
+rbind(tacc3_counts %>%
+  group_by(has_cancer) %>%
+  summarise(median_auc = 10/(median(auc)/1e6), median_mapped = 10/(median(mapped)/1e6)), gtex_tacc3_counts %>%
+  group_by(has_cancer) %>%
+  summarise(median_auc = 10/(median(auc)/1e6), median_mapped = 10/(median(mapped)/1e6)))
+```
+
+```{r}
+tacc3_combined %>%
+  ggplot(aes(x = Tissue, y = log2_auc_norm, fill = has_cancer)) +
+  geom_boxplot() +
+  geom_hline(aes(yintercept = 0.0016))
+```
+
+
+
