@@ -1,0 +1,412 @@
+---
+title: "Analysis of distribution shape"
+output: html_notebook
+---
+```{r}
+library(diptest)
+library(multimode)
+library(EnvStats)
+library(purrr)
+
+```
+
+As gene overexpression was not always able to identify fusion genes, further research was conducted into utilising the shape of the gene distribution. This was inspired by de Torrente et al., (2020) who classified gene expression into one of six shapes before conducting differential expression analysis. This enabled a more sensitive approach.
+
+6 distrib
+-2 symmetric: normal and cauchy (heavy tails, more peaked)
+-skewed, asymmetric: lognormal, pareto, gamma
+-2 distinct subgroups in data: bimodal
+
+-when normal - compare tails to non tails - picked the 10
+-when asymmetric - extreme was 1st/last percentile - depending on shape of asymm
+-bimodal - split determined by clustering algorithm
+
+To simplify this analysis, we attempted to classify a gene distribution into one of 3 shapes:
+-bimodal
+-normal
+-skewed (left or right tail)
+
+#Bimodality
+-the package used in the paper (ClassDiscovery) has the bimodal test in an old version that I can't download
+
+instead used multimode and diptest 
+diptest was slightly more conservative but was faster to run
+
+#bimodality
+so the package used in the paper (ClassDiscovery) has the bimodal test in an old version that I can't download
+https://bioinformatics.mdanderson.org/Software/OOMPA/Current/ClassDiscovery-manual.pdf
+https://journals.sagepub.com/doi/10.4137/cin.s2846?url_ver=Z39.88-2003&rfr_id=ori:rid:crossref.org&rfr_dat=cr_pub%20%200pubmed
+-therefore abandon this route
+-instead use package multimode https://towardsdatascience.com/modelling-bimodal-distributions-with-multimode-in-r-94dbb884abc9
+-uses the dip test (I think)
+-anyway it has H0 as univariate, H2 as multimodes
+-so if p < 0.05 then bimodal
+-can then find point of multimode
+
+-the ERG prostate adenocarcinoma bimodal distribution was used for this analysis
+```{r}
+erg_prostate <- erg_combined %>%
+  filter(has_cancer == "Cancer", Tissue == "Prostate") %>%
+  ggplot(aes(x = log2_auc_norm, fill = Project_ID)) +
+  geom_density(alpha = 0.4) +
+  geom_vline(aes(xintercept = log2_auc_norm), data = . %>% filter(fusion == "Fusion")) +
+  theme(legend.position = "none") +
+  scale_x_continuous(breaks = c(0:11), limits = c(-0.5,11)) +
+  theme(axis.text = element_text(size = 15)) +
+  theme(axis.title = element_text(size = 20)) +
+  labs(x = "Log2 scaled cpm", y = "Density")
+erg_prostate
+```
+
+```{r}
+try.bimodal <- erg_counts %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Cancer == "Prostate Adenocarcinoma")
+try.bimodal
+
+modetest(try.bimodal$log2_auc_norm)
+locmodes(try.bimodal$log2_auc_norm, mod0=2, display=TRUE)
+```
+overexpression was defined from the dip point (antimode) corresponding to 5.277 log2 cpm
+202 samples were identified as overexpressed through this
+196 fusions were captured
+this was a true positive sensitivity of 96%
+
+#Normal 
+To simplify the workflow (maintaining a low computational complexity), normality was defined in conjunction with skewness
+Overexpression was maintained as samples above the 95th percentile
+
+#Skewed
+Skewness was determined using the skewness test.
+skew < - 1 was taken to be a left tailed distribution (NA)
+skew > 1 right tailed distribution (overexpression above 90th percentile)
+a skew between [-1,1] was taken to approximate the normal distribution
+
+This was tested using the ETV1 prostate adenocarcinoma samples.
+```{r}
+etv1_prostate <- etv1_combined %>%
+  filter(has_cancer == "Cancer", Tissue == "Prostate") %>%
+  ggplot(aes(x = log2_auc_norm, fill = Project_ID)) +
+  geom_density(alpha = 0.4) +
+  geom_vline(aes(xintercept = log2_auc_norm), data = . %>% filter(fusion == "Fusion")) +
+  theme(legend.position = "none") +
+  scale_x_continuous(breaks = c(-3:12), limits = c(-3,12)) +
+  labs(x = "Log2 scaled cpm", y = "Density")
+etv1_prostate
+```
+```{r}
+etv1_skew <- shape_for_heatmap(etv1_counts)
+etv1_skew %>% select(PRAD) 
+```
+ETV1 has a skew of 1.937 in prostate adenocarcinoma, identifying it as a right-tailed distribution.
+Identifying overexpression as samples above the 90th percentile, this enabled a true positive sensitivity of 90.1%
+
+
+#Combining analysis
+```{r}
+shape_for_heatmap <- function(gene) {
+  counts <-  gene %>%
+    filter(has_cancer == "Cancer") %>%
+    group_by(Project_ID) %>%
+    distinct(Project_ID) %>%
+    .[order(.$Project_ID),]
+  bimodal <- gene %>%
+    filter(has_cancer == "Cancer") %>%
+    split(f = list(as.character(.$Project_ID))) %>%
+    map(~dip.test(.x$log2_auc_norm)$p.value) %>%
+    unlist(., .$Project_ID) %>%
+    data.frame(.)
+  colnames(bimodal) <- "p.val"
+  counts$bimodal_p.value <- bimodal$p.val
+  skewness <- gene %>%
+    filter(has_cancer == "Cancer") %>%
+    split(f = list(as.character(.$Project_ID))) %>%
+    map(~skewness(.x$log2_auc_norm)) %>%
+    unlist(., .$Project_ID) %>%
+    data.frame(.)
+  colnames(skewness) <- "skew"
+  counts$skew <- skewness$skew
+  counts <- data.frame(t(counts))
+  colnames(counts) <- counts[1,]
+  counts <- counts[-1,]
+  counts <- counts %>%
+    t(.) %>% data.frame() %>% type.convert(.) %>% 
+    transform(skew = ifelse(bimodal_p.value <= 0.05, "NA", skew)) %>%
+    t(.) %>% data.frame()
+  counts
+}
+
+#gtex
+shape_for_heatmap_gtex <- function(gene) {
+  counts <-  gene %>%
+    filter(has_cancer == "GTEx") %>%
+    group_by(Tissue) %>%
+    distinct(Tissue) %>%
+    .[order(.$Tissue),]
+  bimodal <- gene %>%
+    filter(has_cancer == "GTEx") %>%
+    split(f = list(as.character(.$Tissue))) %>%
+    map(~dip.test(.x$log2_auc_norm)$p.value) %>%
+    unlist(., .$Tissue) %>%
+    data.frame(.)
+  colnames(bimodal) <- "p.val"
+  counts$bimodal_p.value <- bimodal$p.val
+  skewness <- gene %>%
+    filter(has_cancer == "GTEx") %>%
+    split(f = list(as.character(.$Tissue))) %>%
+    map(~skewness(.x$log2_auc_norm)) %>%
+    unlist(., .$Tissue) %>%
+    data.frame(.)
+  colnames(skewness) <- "skew"
+  counts$skew <- skewness$skew
+  counts <- data.frame(t(counts))
+  colnames(counts) <- counts[1,]
+  counts <- counts[-1,]
+  counts <- counts %>%
+    t(.) %>% data.frame() %>% type.convert(.) %>% 
+    transform(skew = ifelse(bimodal_p.value <= 0.05, "NA", skew)) %>%
+    t(.) %>% data.frame()
+  counts
+}
+
+#normal
+shape_for_heatmap_normal <- function(gene) {
+  counts <-  gene %>%
+    filter(has_cancer == "Normal") %>%
+    group_by(Tissue) %>%
+    distinct(Tissue) %>%
+    .[order(.$Tissue),]
+  bimodal <- gene %>%
+    filter(has_cancer == "Normal") %>%
+    split(f = list(as.character(.$Tissue))) %>%
+    map(~dip.test(.x$log2_auc_norm)$p.value) %>%
+    unlist(., .$Tissue) %>%
+    data.frame(.)
+  colnames(bimodal) <- "p.val"
+  counts$bimodal_p.value <- bimodal$p.val
+  skewness <- gene %>%
+    filter(has_cancer == "Normal") %>%
+    split(f = list(as.character(.$Tissue))) %>%
+    map(~skewness(.x$log2_auc_norm)) %>%
+    unlist(., .$Tissue) %>%
+    data.frame(.)
+  colnames(skewness) <- "skew"
+  counts$skew <- skewness$skew
+  counts <- data.frame(t(counts))
+  colnames(counts) <- counts[1,]
+  counts <- counts[-1,]
+  counts <- counts %>%
+    t(.) %>% data.frame() %>% type.convert(.) %>% 
+    transform(skew = ifelse(bimodal_p.value <= 0.05, "NA", skew)) %>%
+    t(.) %>% data.frame()
+  counts
+}
+```
+
+```{r}
+shape_in_words3 <- function(heat) {
+  shape <- heat
+  shape <- shape[2,] %>% 
+    t(.) %>% 
+    data.frame() %>% 
+    type.convert()
+  shape <- shape %>% mutate(words = case_when((skew >= -1) & (skew <= 1) ~ "Normal",
+          (skew < -1) ~ "Left tail",
+          (skew > 1) ~ "Right tail")) %>% 
+          replace_na(list(words = "Bimodal"))
+  shape
+}
+```
+
+The functions are able to identify the distribution shape and the name of the shape.
+However, using this information to then specify an overexpression threshold for individual cancer types was beyond the scope of this thesis.
+
+#heatmaps of skew and bimodality for TCGA and GTEx
+
+```{r}
+erg_heat <- shape_for_heatmap(erg_counts)
+maml3_heat <- shape_for_heatmap(maml3_counts)
+tfe3_heat <- shape_for_heatmap(tfe3_counts)
+tmprss2_heat <- shape_for_heatmap(tmprss2_counts)
+rara_heat <- shape_for_heatmap(rara_counts)
+tacc3_heat <- shape_for_heatmap(tacc3_counts)
+ret_heat <- shape_for_heatmap(ret_counts)
+etv1_heat <- shape_for_heatmap(etv1_counts)
+ntrk3_heat <- shape_for_heatmap(ntrk3_counts)
+#alk_heat <- shape_for_heatmap(alk_counts) 
+arhgap26_heat <- shape_for_heatmap(arhgap26_counts)
+```
+
+```{r}
+bimodal_heat <- rbind(erg_heat[1,], maml3_heat[1,], tfe3_heat[1,], tmprss2_heat[1,], rara_heat[1,], tacc3_heat[1,], ret_heat[1,], etv1_heat[1,], ntrk3_heat[1,], arhgap26_heat[1,])
+rownames(bimodal_heat) <- c("ERG", "MAML3", "TFE3", "TMPRSS2", "RARA", "TACC3", "RET", "ETV1", "NTRK3", "ARHGAP26")
+bimodal_heat <- type.convert(bimodal_heat)
+
+skew_heat <- rbind(erg_heat[2,], maml3_heat[2,], tfe3_heat[2,], tmprss2_heat[2,], rara_heat[2,], tacc3_heat[2,], ret_heat[2,], etv1_heat[2,], ntrk3_heat[2,], arhgap26_heat[2,])
+rownames(skew_heat) <- c("ERG", "MAML3", "TFE3", "TMPRSS2", "RARA", "TACC3", "RET", "ETV1", "NTRK3", "ARHGAP26")
+skew_heat <- type.convert(skew_heat)
+```
+
+```{r}
+bimodal_heat %>% melt(.) %>%
+  mutate(gene = rep(c("ERG", "MAML3", "TFE3", "TMPRSS2", "RARA", "TACC3", "RET", "ETV1", "NTRK3", "ARHGAP26"), times = 33), .before = variable) %>%
+  mutate(groups = cut(.$value, breaks = c(1, 0.05, 0))) %>%
+  ggplot(., aes(gene, variable, fill = groups)) +
+  geom_tile(colour = "white", linetype = 1) +
+  scale_fill_discrete(breaks = levels(groups)) +
+  labs(title = "Bimodality heat map of p values", subtitle = "Red = p < 0.05")
+
+skew_heat %>% melt(.) %>%
+  mutate(gene = rep(c("ERG", "MAML3", "TFE3", "TMPRSS2", "RARA", "TACC3", "RET", "ETV1", "NTRK3", "ARHGAP26"), times = 33), .before = variable) %>%
+  ggplot(., aes(gene, variable)) +
+  geom_tile(aes(fill = value), colour = "white", linetype = 1) +
+  scale_fill_stepsn(colours = c("darkblue", "white", 
+                                  "darkgreen"),
+                       breaks= c(-1, 1)) +
+  labs(title = "Skew heat map", subtitle = "purple = left tail, darkgreen = right tail")
+
+bimodal_heat_gtex %>% melt(.) %>%
+  mutate(gene = rep(c("ERG", "MAML3", "TFE3", "TMPRSS2", "RARA", "TACC3", "RET", "ETV1", "NTRK3", "ARHGAP26"), times = 27), .before = variable) %>%
+  mutate(groups = cut(.$value, breaks = c(1, 0.05, 0))) %>%
+  ggplot(., aes(gene, variable, fill = groups)) +
+  geom_tile(colour = "white", linetype = 1) +
+  scale_fill_discrete(breaks = levels(groups)) +
+  labs(title = "GTEX Bimodality heat map of p values", subtitle = "Red = p < 0.05")
+
+skew_heat_gtex %>% melt(.) %>%
+  mutate(gene = rep(c("ERG", "MAML3", "TFE3", "TMPRSS2", "RARA", "TACC3", "RET", "ETV1", "NTRK3", "ARHGAP26"), times = 27), .before = variable) %>%
+  ggplot(., aes(gene, variable)) +
+  geom_tile(aes(fill = value), colour = "white", linetype = 1) +
+  scale_fill_stepsn(colours = c("darkblue", "white", 
+                                  "darkgreen"),
+                       breaks= c(-1, 1)) +
+  labs(title = " GTEX Skew heat map", subtitle = "purple = left tail, darkgreen = right tail")
+
+bimodal_heat_norm %>% melt(.) %>%
+  mutate(gene = rep(c("ERG", "MAML3", "TFE3", "TMPRSS2", "RARA", "TACC3", "RET", "ETV1", "NTRK3", "ARHGAP26"), times = 20), .before = variable) %>%
+  mutate(groups = cut(.$value, breaks = c(1, 0.05, 0))) %>%
+  ggplot(., aes(gene, variable, fill = groups)) +
+  geom_tile(colour = "white", linetype = 1) +
+  scale_fill_discrete(breaks = levels(groups)) +
+  labs(title = "Normal Bimodality heat map of p values", subtitle = "Red = p < 0.05")
+
+skew_heat_norm %>% melt(.) %>%
+  mutate(gene = rep(c("ERG", "MAML3", "TFE3", "TMPRSS2", "RARA", "TACC3", "RET", "ETV1", "NTRK3", "ARHGAP26"), times = 20), .before = variable) %>%
+  ggplot(., aes(gene, variable)) +
+  geom_tile(aes(fill = value), colour = "white", linetype = 1) +
+  scale_fill_stepsn(colours = c("darkblue", "white", 
+                                  "darkgreen"),
+                       breaks= c(-1, 1)) +
+  labs(title = "Normal Skew heat map", subtitle = "purple = left tail, darkgreen = right tail")
+```
+
+
+```{r}
+#gtex
+gtex_erg_heat <- shape_for_heatmap_gtex(erg_combined)
+gtex_maml3_heat <- shape_for_heatmap_gtex(maml3_combined)
+gtex_tfe3_heat <- shape_for_heatmap_gtex(tfe3_combined)
+gtex_tmprss2_heat <- shape_for_heatmap_gtex(tmprss2_combined)
+gtex_rara_heat <- shape_for_heatmap_gtex(rara_combined)
+gtex_tacc3_heat <- shape_for_heatmap_gtex(tacc3_combined)
+gtex_ret_heat <- shape_for_heatmap_gtex(ret_combined)
+gtex_etv1_heat <- shape_for_heatmap_gtex(etv1_combined)
+gtex_ntrk3_heat <- shape_for_heatmap_gtex(ntrk3_combined)
+#alk_heat <- shape_for_heatmap(alk_counts) 
+gtex_arhgap26_heat <- shape_for_heatmap_gtex(arhgap26_combined)
+
+bimodal_heat_gtex <- rbind(gtex_erg_heat[1,], gtex_maml3_heat[1,], gtex_tfe3_heat[1,], gtex_tmprss2_heat[1,], gtex_rara_heat[1,], gtex_tacc3_heat[1,], gtex_ret_heat[1,], gtex_etv1_heat[1,], gtex_ntrk3_heat[1,], gtex_arhgap26_heat[1,])
+rownames(bimodal_heat_gtex) <- c("ERG", "MAML3", "TFE3", "TMPRSS2", "RARA", "TACC3", "RET", "ETV1", "NTRK3", "ARHGAP26")
+bimodal_heat_gtex <- type.convert(bimodal_heat_gtex)
+
+skew_heat_gtex <- rbind(gtex_erg_heat[2,], gtex_maml3_heat[2,], gtex_tfe3_heat[2,], gtex_tmprss2_heat[2,], gtex_rara_heat[2,], gtex_tacc3_heat[2,], gtex_ret_heat[2,], gtex_etv1_heat[2,], gtex_ntrk3_heat[2,], gtex_arhgap26_heat[2,])
+rownames(skew_heat_gtex) <- c("ERG", "MAML3", "TFE3", "TMPRSS2", "RARA", "TACC3", "RET", "ETV1", "NTRK3", "ARHGAP26")
+skew_heat_gtex <- type.convert(skew_heat_gtex)
+
+#normal
+norm_erg_heat <- shape_for_heatmap_normal(erg_combined)
+norm_maml3_heat <- shape_for_heatmap_normal(maml3_combined)
+norm_tfe3_heat <- shape_for_heatmap_normal(tfe3_combined)
+norm_tmprss2_heat <- shape_for_heatmap_normal(tmprss2_combined)
+norm_rara_heat <- shape_for_heatmap_normal(rara_combined)
+norm_tacc3_heat <- shape_for_heatmap_normal(tacc3_combined)
+norm_ret_heat <- shape_for_heatmap_normal(ret_combined)
+norm_etv1_heat <- shape_for_heatmap_normal(etv1_combined)
+norm_ntrk3_heat <- shape_for_heatmap_normal(ntrk3_combined)
+#alk_heat <- shape_for_heatmap(alk_counts) 
+norm_arhgap26_heat <- shape_for_heatmap_normal(arhgap26_combined)
+
+bimodal_heat_norm <- rbind(norm_erg_heat[1,], norm_maml3_heat[1,], norm_tfe3_heat[1,], norm_tmprss2_heat[1,], norm_rara_heat[1,], norm_tacc3_heat[1,], norm_ret_heat[1,], norm_etv1_heat[1,], norm_ntrk3_heat[1,], norm_arhgap26_heat[1,])
+rownames(bimodal_heat_norm) <- c("ERG", "MAML3", "TFE3", "TMPRSS2", "RARA", "TACC3", "RET", "ETV1", "NTRK3", "ARHGAP26")
+bimodal_heat_norm <- type.convert(bimodal_heat_norm)
+
+skew_heat_norm <- rbind(norm_erg_heat[2,], norm_maml3_heat[2,], norm_tfe3_heat[2,], norm_tmprss2_heat[2,], norm_rara_heat[2,], norm_tacc3_heat[2,], norm_ret_heat[2,], norm_etv1_heat[2,], norm_ntrk3_heat[2,], norm_arhgap26_heat[2,])
+rownames(skew_heat_norm) <- c("ERG", "MAML3", "TFE3", "TMPRSS2", "RARA", "TACC3", "RET", "ETV1", "NTRK3", "ARHGAP26")
+skew_heat_norm <- type.convert(skew_heat_norm)
+```
+
+
+
+
+
+
+#comparing skewed vs non skewed in regards to positions of fusions
+
+-tacc3                                       fusion       cancer        gtex
+-Glioblastoma Multiforme                      12.12       100%          >100%                  right tail
+-Bladder Urothelial Carcinoma            7.978 - 9.381    >97%          >100%
+-Cervix                                  6.116 - 9.881    >30%          >100%    -gross
+-Lung Squamous Cell Carcinoma            4.517 - 9.063    >5%           >69%      -yuck
+-Lung Adenocarcinoma                         8.477        100%          >100%
+-Brain Lower Grade Glioma                5.318 - 9.075    >90%          >100%
+-Kidney Renal Papillary Cell Carcinoma    3.18 - 9.37     >34%          >67%    -gross         right tail
+-Head and Neck Squamous Cell Carcinoma   8.581 - 8.727    >99%          NA
+-Esophageal Carcinoma                    6.456 - 6.557    >91%          >99%
+-Acute Myeloid Leukemia                      7.094        >97%          >71%
+
+-ret
+-Thyroid Carcinoma                       3.471 - 7.540   >90%           >90%            
+-Breast Invasive Carcinoma                    4.755      >53%           >100%     -gross
+-Colon Adenocarcinoma                         5.23       >99%           >97%
+-Ovarian Serous Cystadenocarcinoma            2.611      >72%           >63%   -meh
+-Lung Adenocarcinoma                     3.667 - 3.767   >88%           >16%                  right tail
+-Acute Myeloid Leukemia                     -0.6016      29%            <0%         
+
+-etv1
+-Brain Lower Grade Glioma                    11.19       100%           >100%                 left tail
+-Prostate Adenocarcinoma                4.018 - 10.093   >89%           >93%                  right tail
+
+-ntrk3
+-Breast Invasive Carcinoma                   7.266       >99%           >100%
+-Thyroid Carcinoma                      3.733 - 6.13     >83%           >94%
+-Colon Adenocarcinoma                   1.638 - 6.204    >96%           >1%          -lots of negatives in cancer
+-Skin Cutaneous Melanoma                     6.047       >99%           >94%         -lots of negatives in cancer
+-Brain Lower Grade Glioma                    5.642       >8%            >100%               -yuck                     left tail
+-Pancreatic Adenocarcinoma                   4.971       100%           >100%       66% < 1 
+-Cervix                                      3.807       >99%           >92%         -mostly negatives
+-Head and Neck Squamous Cell Carcinoma       1.872       >97%           NA           -mostly negatives
+
+-alk
+-Thyroid Carcinoma                     3.131 - 11.164   >94%           >80%        -mostly <1
+-Sarcoma                                     10.13      100%           NA           mostly neg
+-Skin Cutaneous Melanoma               2.316 - 8.608    >66%           >9%         40% <1      -meh
+-Bladder Urothelial Carcinoma                6.816      100%           >100%       -mostly neg 97% <1
+-Kidney Renal Papillary Cell Carcinoma 3.912 - 5.656    >99%           >84%        -mostly neg 93% <1
+-Lung Adenocarcinoma                   2.092 - 5.144    >97%           >0%        -mostly neg 94% < 1
+-Rectum Adenocarcinoma                      2.95        100%           NA         99% neg
+
+-arhgap26
+-Stomach Adenocarcinoma               4.688 - 5.973     >22%          <90%      
+-Sarcoma                                    5.838       97%           NA       
+-Cervix                                     6.027       >87%          >100%
+-Lung Squamous Cell Carcinoma               5.123       >89%          >94%
+-Lung Adenocarcinoma                  4.244 - 4.984     >25%          >53%
+-Head and Neck Squamous Cell Carcinoma     4.055        >68%           NA     
+
+-the only 2 right tailed distribs in tacc3 have fusions
+    -3 left tailed distrib (colon adeno, testic, thymoma) - no fusions
+-2 ret right tail - 1 fusion other uveal, 2 left tail - no fusions
+-1 etv1 right tail - fusion, 4 left tail - 1 fusion
+-1 ntrk3 right tail - no fusion, 1 left tail - fusion
+-0 arhgap26 right tail, 2 left tail - no fusion
+
