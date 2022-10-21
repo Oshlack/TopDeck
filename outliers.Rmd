@@ -1,0 +1,545 @@
+---
+title: "Overexpression analysis"
+output: html_notebook
+---
+
+```{r}
+alk.test2 <- rbind(alk_counts %>% filter(Cancer == "Kidney Renal Papillary Cell Carcinoma"), 
+      alk_counts %>% filter(Cancer == "Lung Adenocarcinoma"), 
+      alk_counts %>% filter(Cancer == "Skin Cutaneous Melanoma"), 
+      alk_counts %>% filter(Cancer == "Thyroid Carcinoma")) %>%
+  filter(has_cancer == "Cancer") %>%
+  split(f = list(as.character(.$Cancer))) %>%
+  map(~wilcox.test(.x$log2_auc_norm ~ .x$fusion, alternative = "greater")$p.value) %>% 
+  unlist(., .$Cancer) %>%
+  t(.) %>%
+  data.frame(.) %>%
+     mutate(Acute.Myeloid.Leukemia = 1, Bladder.Urothelial.Carcinoma = 1, Brain.Lower.Grade.Glioma = 1, Breast.Invasive.Carcinoma = 1, Cervical.Squamous.Cell.Carcinoma.and.Endocervical.Adenocarcinoma = 1, Colon.Adenocarcinoma = 1, Esophageal.Carcinoma = 1, Head.and.Neck.Squamous.Cell.Carcinoma = 1, Kidney.Renal.Clear.Cell.Carcinoma = 1, Liver.Hepatocellular.Carcinoma = 1, Lung.Squamous.Cell.Carcinoma = 1, Pheochromocytoma.and.Paraganglioma	= 1, Prostate.Adenocarcinoma = 1,  Stomach.Adenocarcinoma = 1)  %>%
+  .[, order(colnames(.))]
+
+arh.test2 <- rbind(arhgap26_counts %>% filter(Cancer == "Lung Adenocarcinoma"), 
+      arhgap26_counts %>% filter(Cancer == "Stomach Adenocarcinoma")) %>%
+  filter(has_cancer == "Cancer") %>%
+  split(f = list(as.character(.$Cancer))) %>%
+  map(~wilcox.test(.x$log2_auc_norm ~ .x$fusion, alternative = "greater")$p.value) %>% 
+  unlist(., .$Cancer) %>%
+  t(.) %>%
+  data.frame(.) %>%
+     mutate(Acute.Myeloid.Leukemia = 1, Bladder.Urothelial.Carcinoma = 1, Brain.Lower.Grade.Glioma = 1, Breast.Invasive.Carcinoma = 1, Cervical.Squamous.Cell.Carcinoma.and.Endocervical.Adenocarcinoma = 1, Colon.Adenocarcinoma = 1, Esophageal.Carcinoma = 1, Head.and.Neck.Squamous.Cell.Carcinoma = 1, Kidney.Renal.Clear.Cell.Carcinoma = 1, Kidney.Renal.Papillary.Cell.Carcinoma = 1, Liver.Hepatocellular.Carcinoma = 1, Lung.Squamous.Cell.Carcinoma = 1, Pheochromocytoma.and.Paraganglioma	= 1, Prostate.Adenocarcinoma = 1, Skin.Cutaneous.Melanoma = 1, Thyroid.Carcinoma = 1)  %>%
+  .[, order(colnames(.))]
+
+erg.test2 <- rbind(erg_counts %>% filter(Cancer == "Prostate Adenocarcinoma"))%>%
+  filter(has_cancer == "Cancer") %>%
+  split(f = list(as.character(.$Cancer))) %>%
+  map(~wilcox.test(.x$log2_auc_norm ~ .x$fusion, alternative = "greater")$p.value) %>% 
+  unlist(., .$Cancer) %>%
+  t(.) %>%
+  data.frame(.) %>%
+     mutate(Acute.Myeloid.Leukemia = 1, Bladder.Urothelial.Carcinoma = 1, Brain.Lower.Grade.Glioma = 1, Breast.Invasive.Carcinoma = 1, Cervical.Squamous.Cell.Carcinoma.and.Endocervical.Adenocarcinoma = 1, Colon.Adenocarcinoma = 1, Esophageal.Carcinoma = 1, Head.and.Neck.Squamous.Cell.Carcinoma = 1, Kidney.Renal.Clear.Cell.Carcinoma = 1, Kidney.Renal.Papillary.Cell.Carcinoma = 1, Liver.Hepatocellular.Carcinoma = 1, Lung.Adenocarcinoma = 1, Lung.Squamous.Cell.Carcinoma = 1, Pheochromocytoma.and.Paraganglioma	= 1, Skin.Cutaneous.Melanoma = 1, Stomach.Adenocarcinoma = 1, Thyroid.Carcinoma = 1)  %>%
+  .[, order(colnames(.))]
+
+etv.test2 <- rbind(etv1_counts %>% filter(Cancer == "Prostate Adenocarcinoma"))%>%
+  filter(has_cancer == "Cancer") %>%
+  split(f = list(as.character(.$Cancer))) %>%
+  map(~wilcox.test(.x$log2_auc_norm ~ .x$fusion, alternative = "greater")$p.value) %>% 
+  unlist(., .$Cancer) %>%
+  t(.) %>%
+  data.frame(.) %>%
+     mutate(Acute.Myeloid.Leukemia = 1, Bladder.Urothelial.Carcinoma = 1, Brain.Lower.Grade.Glioma = 1, Breast.Invasive.Carcinoma = 1, Cervical.Squamous.Cell.Carcinoma.and.Endocervical.Adenocarcinoma = 1, Colon.Adenocarcinoma = 1, Esophageal.Carcinoma = 1, Head.and.Neck.Squamous.Cell.Carcinoma = 1, Kidney.Renal.Clear.Cell.Carcinoma = 1, Kidney.Renal.Papillary.Cell.Carcinoma = 1, Liver.Hepatocellular.Carcinoma = 1, Lung.Adenocarcinoma = 1, Lung.Squamous.Cell.Carcinoma = 1, Pheochromocytoma.and.Paraganglioma	= 1, Skin.Cutaneous.Melanoma = 1, Stomach.Adenocarcinoma = 1, Thyroid.Carcinoma = 1)  %>%
+  .[, order(colnames(.))]
+
+mam.test2 <- rbind(maml3_counts %>% filter(Cancer == "Pheochromocytoma and Paraganglioma"))%>%
+  filter(has_cancer == "Cancer") %>%
+  split(f = list(as.character(.$Cancer))) %>%
+  map(~wilcox.test(.x$log2_auc_norm ~ .x$fusion, alternative = "greater")$p.value) %>% 
+  unlist(., .$Cancer) %>%
+  t(.) %>%
+  data.frame(.) %>%
+     mutate(Acute.Myeloid.Leukemia = 1, Bladder.Urothelial.Carcinoma = 1, Brain.Lower.Grade.Glioma = 1, Breast.Invasive.Carcinoma = 1, Cervical.Squamous.Cell.Carcinoma.and.Endocervical.Adenocarcinoma = 1, Colon.Adenocarcinoma = 1, Esophageal.Carcinoma = 1, Head.and.Neck.Squamous.Cell.Carcinoma = 1, Kidney.Renal.Clear.Cell.Carcinoma = 1, Kidney.Renal.Papillary.Cell.Carcinoma = 1, Liver.Hepatocellular.Carcinoma = 1, Lung.Adenocarcinoma = 1, Lung.Squamous.Cell.Carcinoma = 1, Prostate.Adenocarcinoma = 1, Skin.Cutaneous.Melanoma = 1, Stomach.Adenocarcinoma = 1, Thyroid.Carcinoma = 1)  %>%
+  .[, order(colnames(.))]
+
+ntr.test2 <- rbind(ntrk3_counts %>% filter(Cancer == "Colon Adenocarcinoma"), 
+            ntrk3_counts %>% filter(Cancer == "Thyroid Carcinoma")) %>%
+  filter(has_cancer == "Cancer") %>%
+  split(f = list(as.character(.$Cancer))) %>%
+  map(~wilcox.test(.x$log2_auc_norm ~ .x$fusion, alternative = "greater")$p.value) %>% 
+  unlist(., .$Cancer) %>%
+  t(.) %>%
+  data.frame(.) %>%
+     mutate(Acute.Myeloid.Leukemia = 1, Bladder.Urothelial.Carcinoma = 1, Brain.Lower.Grade.Glioma = 1, Breast.Invasive.Carcinoma = 1, Cervical.Squamous.Cell.Carcinoma.and.Endocervical.Adenocarcinoma = 1, Esophageal.Carcinoma = 1, Head.and.Neck.Squamous.Cell.Carcinoma = 1, Kidney.Renal.Clear.Cell.Carcinoma = 1, Kidney.Renal.Papillary.Cell.Carcinoma = 1, Liver.Hepatocellular.Carcinoma = 1, Lung.Adenocarcinoma = 1, Lung.Squamous.Cell.Carcinoma = 1, Pheochromocytoma.and.Paraganglioma	= 1, Prostate.Adenocarcinoma = 1, Skin.Cutaneous.Melanoma = 1, Stomach.Adenocarcinoma = 1)  %>%
+  .[, order(colnames(.))]
+
+rara.test2 <- rbind(rara_counts %>% filter(Cancer == "Acute Myeloid Leukemia"), 
+            rara_counts %>% filter(Cancer == "Breast Invasive Carcinoma")) %>%
+  filter(has_cancer == "Cancer") %>%
+  split(f = list(as.character(.$Cancer))) %>%
+  map(~wilcox.test(.x$log2_auc_norm ~ .x$fusion, alternative = "greater")$p.value) %>% 
+  unlist(., .$Cancer) %>%
+  t(.) %>%
+  data.frame(.) %>%
+     mutate(Bladder.Urothelial.Carcinoma = 1, Brain.Lower.Grade.Glioma = 1, Cervical.Squamous.Cell.Carcinoma.and.Endocervical.Adenocarcinoma = 1, Colon.Adenocarcinoma = 1, Esophageal.Carcinoma = 1, Head.and.Neck.Squamous.Cell.Carcinoma = 1, Kidney.Renal.Clear.Cell.Carcinoma = 1, Kidney.Renal.Papillary.Cell.Carcinoma = 1, Liver.Hepatocellular.Carcinoma = 1, Lung.Adenocarcinoma = 1, Lung.Squamous.Cell.Carcinoma = 1, Pheochromocytoma.and.Paraganglioma	= 1, Prostate.Adenocarcinoma = 1, Skin.Cutaneous.Melanoma = 1, Stomach.Adenocarcinoma = 1, Thyroid.Carcinoma = 1)  %>%
+  .[, order(colnames(.))]
+
+ret.test2 <- rbind(ret_counts %>% filter(Cancer == "Lung Adenocarcinoma"), 
+            ret_counts %>% filter(Cancer == "Thyroid Carcinoma")) %>%
+  filter(has_cancer == "Cancer") %>%
+  split(f = list(as.character(.$Cancer))) %>%
+  map(~wilcox.test(.x$log2_auc_norm ~ .x$fusion, alternative = "greater")$p.value) %>% 
+  unlist(., .$Cancer) %>%
+  t(.) %>%
+  data.frame(.) %>%
+     mutate(Acute.Myeloid.Leukemia = 1, Bladder.Urothelial.Carcinoma = 1, Brain.Lower.Grade.Glioma = 1, Breast.Invasive.Carcinoma = 1, Cervical.Squamous.Cell.Carcinoma.and.Endocervical.Adenocarcinoma = 1, Colon.Adenocarcinoma = 1, Esophageal.Carcinoma = 1, Head.and.Neck.Squamous.Cell.Carcinoma = 1, Kidney.Renal.Clear.Cell.Carcinoma = 1, Kidney.Renal.Papillary.Cell.Carcinoma = 1, Liver.Hepatocellular.Carcinoma = 1, Lung.Squamous.Cell.Carcinoma = 1, Pheochromocytoma.and.Paraganglioma	= 1, Prostate.Adenocarcinoma = 1, Skin.Cutaneous.Melanoma = 1, Stomach.Adenocarcinoma = 1)  %>%
+  .[, order(colnames(.))]
+
+tacc.test2 <- rbind(tacc3_counts %>% filter(Cancer == "Bladder Urothelial Carcinoma"), 
+      tacc3_counts %>% filter(Cancer == "Brain Lower Grade Glioma"), 
+      tacc3_counts %>% filter(Cancer == "Breast Invasive Carcinoma"), 
+      tacc3_counts %>% filter(Cancer == "Cervical Squamous Cell Carcinoma and Endocervical Adenocarcinoma"), 
+      tacc3_counts %>% filter(Cancer == "Esophageal Carcinoma"),
+      tacc3_counts %>% filter(Cancer == "Head and Neck Squamous Cell Carcinoma"),
+      tacc3_counts %>% filter(Cancer == "Kidney Renal Papillary Cell Carcinoma"),
+      tacc3_counts %>% filter(Cancer == "Liver Hepatocellular Carcinoma"),
+      tacc3_counts %>% filter(Cancer == "Lung Squamous Cell Carcinoma")) %>%
+  filter(has_cancer == "Cancer") %>%
+  split(f = list(as.character(.$Cancer))) %>%
+  map(~wilcox.test(.x$log2_auc_norm ~ .x$fusion, alternative = "greater")$p.value) %>% 
+  unlist(., .$Cancer) %>%
+  t(.) %>%
+  data.frame(.) %>%
+   mutate(Acute.Myeloid.Leukemia = 1, Colon.Adenocarcinoma = 1, Kidney.Renal.Clear.Cell.Carcinoma = 1, Lung.Adenocarcinoma = 1, Pheochromocytoma.and.Paraganglioma	= 1, Prostate.Adenocarcinoma = 1, Skin.Cutaneous.Melanoma = 1, Stomach.Adenocarcinoma = 1, Thyroid.Carcinoma = 1)  %>%
+  .[, order(colnames(.))]
+
+tfe.test2 <- rbind(tfe3_counts %>% filter(Cancer == "Kidney Renal Clear Cell Carcinoma"), 
+            tfe3_counts %>% filter(Cancer == "Kidney Renal Papillary Cell Carcinoma")) %>%
+  filter(has_cancer == "Cancer") %>%
+  split(f = list(as.character(.$Cancer))) %>%
+  map(~wilcox.test(.x$log2_auc_norm ~ .x$fusion, alternative = "greater")$p.value) %>% 
+  unlist(., .$Cancer) %>%
+  t(.) %>%
+  data.frame(.) %>%
+     mutate(Acute.Myeloid.Leukemia = 1, Bladder.Urothelial.Carcinoma = 1, Brain.Lower.Grade.Glioma = 1, Breast.Invasive.Carcinoma = 1, Cervical.Squamous.Cell.Carcinoma.and.Endocervical.Adenocarcinoma = 1, Colon.Adenocarcinoma = 1, Esophageal.Carcinoma = 1, Head.and.Neck.Squamous.Cell.Carcinoma = 1, Liver.Hepatocellular.Carcinoma = 1, Lung.Adenocarcinoma = 1, Lung.Squamous.Cell.Carcinoma = 1, Pheochromocytoma.and.Paraganglioma	= 1, Prostate.Adenocarcinoma = 1, Skin.Cutaneous.Melanoma = 1, Stomach.Adenocarcinoma = 1, Thyroid.Carcinoma = 1)  %>%
+  .[, order(colnames(.))]
+ 
+heat_trial_na_greater <-data.frame(rbind(alk.test2, arh.test2, erg.test2, etv.test2, mam.test2, ntr.test2, rara.test2, ret.test2, tacc.test2, tfe.test2)) 
+rownames(heat_trial_na_greater) <- c("ALK", "ARHGAP26", "ERG", "ETV1", "MAML3", "NTRK3", "RARA", "RET", "TACC3", "TFE3")
+heat_trial_na_greater <- na_if(heat_trial_na_greater, 1)
+heat_trial_na_greater
+
+all_cancer_p_greater <- all_genes %>%
+  filter(has_cancer == "Cancer") %>%
+  split(f = list(as.character(.$gene))) %>%
+  map(~wilcox.test(.$log2_auc_norm ~ .$fusion, alternative = "greater")$p.value) %>%
+  unlist(., .$gene) %>%
+  data.frame()
+colnames(all_cancer_p_greater) <- "All"
+all_cancer_p_greater
+heat_with_all_greater <- cbind(heat_trial_na_greater, all_cancer_p_greater)
+heat_with_all_greater
+
+heat_with_all_greater %>% melt(.) %>%
+  mutate(gene = rep(c("ALK", "ARHGAP26", "ERG", "ETV1", "MAML3", "NTRK3", "RARA", "RET", "TACC3", "TFE3"), times = 19), .before = variable) %>%
+  mutate(groups = cut(.$value, breaks = c(1, 0.05, 0))) %>%
+  ggplot(., aes(gene, variable, fill = groups)) +
+  geom_tile( colour = "white", linetype = 1) +
+  scale_fill_discrete(breaks = levels(groups)) +
+  theme(axis.text = element_text(size = 15)) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=0.5)) +
+  labs(x = "Gene", y = "Cancer Type") 
+```
+#comparison of overexpression approaches
+95th percentile overexpression identified more fusion gene samples
+only 3 samples were identified by Tukey's outlier that were not identified by 95th percentile (3 ETV1 prostate adenocarcinoma samples)
+
+false positives when applied to all cancers
+```{r}
+outlier_false_pos <- all_genes %>%
+  filter(is_outlier == TRUE, fusion != "Fusion") %>% select(rail_id, gene, Project_ID)
+write_csv(outlier_false_pos, 'outlier_false_pos.csv')
+
+above95_false_pos <- all_genes %>%
+  filter(above_95 == TRUE, fusion != "Fusion") %>% select(rail_id, gene, Project_ID)
+write_csv(above95_false_pos, 'above95_false_pos.csv')
+
+shared_false_pos <- all_genes %>%
+  filter(above_95 == TRUE, is_outlier == TRUE, fusion != "Fusion") %>% select(rail_id, gene, Project_ID)
+write_csv(shared_false_pos, 'shared_false_pos.csv')
+```
+
+```{r}
+all_genes %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer", above_95 == TRUE, fusion != "Fusion") %>% select(rail_id, gene, Project_ID) %>%
+  group_by(gene) %>%
+  mutate(gene_total = n()) %>%
+  distinct(gene_total)
+```
+
+
+
+
+
+```{r}
+ided_by_both 
+outlier_fusions %>% filter(gene != "TMPRSS2")
+above_95percent
+```
+```{r}
+all_genes %>% filter(fusion == "Fusion") %>% ungroup() %>%
+  summarise(n = n())
+```
+
+```{r}
+ided_by_both %>% ungroup() %>% group_by(gene) %>% summarise(n = n())
+```
+
+```{r}
+outlier_fusions %>% ungroup() %>% group_by(gene) %>% summarise(n = n())
+```
+difference is outlier picks up an extra 3 in ETV1
+
+```{r}
+ided_by_both %>% filter(gene == "ETV1")
+```
+
+```{r}
+outlier_fusions %>% filter(gene == "ETV1")
+```
+-it picks up 3 extra etv1 prostate fusions
+
+```{r}
+etv1_combined %>% filter(has_cancer == "Cancer", Project_ID == "PRAD") %>%
+  ggplot(aes(x = Project_ID, y = log2_auc_norm)) +
+  geom_boxplot() +
+  geom_jitter(aes(colour = is_outlier))
+
+etv1_combined %>% filter(has_cancer == "Cancer", Project_ID == "PRAD") %>%
+  ggplot(aes(x = log2_auc_norm)) +
+  geom_density() +
+  geom_vline(aes(xintercept = log2_auc_norm), data = . %>% filter(fusion == "Fusion"))
+```
+```{r}
+shape_in_words3(shape_for_heatmap(etv1_combined))
+```
+
+
+```{r}
+outlier_false_pos
+above95_false_pos
+shared_false_pos
+```
+-larger discrepancy in false pos
+
+#comparing false positives
+```{r}
+fpr_specific %>% group_by(gene, Project_ID) %>% summarise(n = n())
+```
+1241 samples for 95th
+```{r}
+fpr_specific_outlier %>% group_by(gene, Project_ID) %>% summarise(n = n())
+```
+322 for outlier
+
+```{r}
+fpr_specific_shared %>% group_by(gene, Project_ID) %>% summarise(n = n())
+```
+282 shared
+
+overexp captures 
+capture all the same for alk, arhgap26, erg, etv1 prad shared 19 (outlier 33), maml3, ntrk3, rara, ret luad shared 28 (outlier 54), tacc3, tfe3
+
+so 2 cases where overexpress doesn't capture same false positives
+
+```{r}
+etv1_combined %>% filter(has_cancer == "Cancer", Tissue == "Prostate", fusion == "Fusion")
+```
+
+#boxplot visualisation of genes
+
+```{r}
+alk_combined %>%
+  filter(cancer_status == "Cancer") %>%
+  ggplot(aes(x = Cancer, y = log2_auc_norm)) +
+  geom_boxplot() +
+  geom_jitter(aes(colour = Cancer), data=. %>% filter(fusion == "Fusion")) +
+  theme(legend.position = "none") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+arhgap26_combined %>%
+  filter(cancer_status == "Cancer") %>%
+  ggplot(aes(x = Cancer, y = log2_auc_norm)) +
+  geom_boxplot() +
+  geom_jitter(aes(colour = Cancer), data=. %>% filter(fusion == "Fusion")) +
+  theme(legend.position = "none") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+erg_combined %>%
+  filter(cancer_status == "Cancer") %>%
+  ggplot(aes(x = Cancer, y = log2_auc_norm)) +
+  geom_boxplot() +
+  geom_jitter(aes(colour = Cancer), data=. %>% filter(fusion == "Fusion")) +
+  theme(legend.position = "none") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+etv1_combined %>%
+  filter(cancer_status == "Cancer") %>%
+  ggplot(aes(x = Cancer, y = log2_auc_norm)) +
+  geom_boxplot() +
+  geom_jitter(aes(colour = Cancer), data=. %>% filter(fusion == "Fusion")) +
+  theme(legend.position = "none") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+maml3_combined %>%
+  filter(cancer_status == "Cancer") %>%
+  ggplot(aes(x = Cancer, y = log2_auc_norm)) +
+  geom_boxplot() +
+  geom_jitter(aes(colour = Cancer), data=. %>% filter(fusion == "Fusion")) +
+  theme(legend.position = "none") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+ntrk3_combined %>%
+  filter(cancer_status == "Cancer") %>%
+  ggplot(aes(x = Cancer, y = log2_auc_norm)) +
+  geom_boxplot() +
+  geom_jitter(aes(colour = Cancer), data=. %>% filter(fusion == "Fusion")) +
+  theme(legend.position = "none") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+rara_combined %>%
+  filter(cancer_status == "Cancer") %>%
+  ggplot(aes(x = Cancer, y = log2_auc_norm)) +
+  geom_boxplot() +
+  geom_jitter(aes(colour = Cancer), data=. %>% filter(fusion == "Fusion")) +
+  theme(legend.position = "none") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+ret_combined %>%
+  filter(cancer_status == "Cancer") %>%
+  ggplot(aes(x = Cancer, y = log2_auc_norm)) +
+  geom_boxplot() +
+  geom_jitter(aes(colour = Cancer), data=. %>% filter(fusion == "Fusion")) +
+  theme(legend.position = "none") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+tacc3_combined %>%
+  filter(cancer_status == "Cancer") %>%
+  ggplot(aes(x = Cancer, y = log2_auc_norm)) +
+  geom_boxplot() +
+  geom_jitter(aes(colour = Cancer), data=. %>% filter(fusion == "Fusion")) +
+  theme(legend.position = "none") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+tfe3_combined %>%
+  filter(cancer_status == "Cancer") %>%
+  ggplot(aes(x = Cancer, y = log2_auc_norm)) +
+  geom_boxplot() +
+  geom_jitter(aes(colour = Cancer), data=. %>% filter(fusion == "Fusion")) +
+  theme(legend.position = "none") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+#Tukey's outlier method
+
+#so these graphs are the the outlier == TRUE
+```{r}
+#early breaks
+expression_function_mutate(erg_counts) %>%
+  filter(is_outlier == "TRUE") %>%
+  ggplot(aes(x = Cancer, fill = fusion)) +
+  geom_bar(position = "fill") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+expression_function_mutate(maml3_counts) %>%
+  filter(cancer_status == "Cancer") %>%
+  filter(is_outlier == "TRUE") %>%
+  ggplot(aes(x = Cancer, fill = fusion)) +
+  geom_bar(position = "fill") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+expression_function_mutate(tfe3_counts) %>%
+  filter(cancer_status == "Cancer") %>%
+  filter(is_outlier == "TRUE") %>%
+  ggplot(aes(x = Cancer, fill = fusion)) +
+  geom_bar(position = "fill") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+expression_function_mutate(tmprss2_counts) %>%
+  filter(cancer_status == "Cancer") %>%
+  filter(is_outlier == "TRUE") %>%
+  ggplot(aes(x = Cancer, fill = fusion)) +
+  geom_bar(position = "fill") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+expression_function_mutate(rara_counts) %>%
+  filter(cancer_status == "Cancer") %>%
+  filter(is_outlier == "TRUE") %>%
+  ggplot(aes(x = Cancer, fill = fusion)) +
+  geom_bar(position = "fill") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+#middle
+expression_function_mutate(tacc3_counts) %>%
+  filter(cancer_status == "Cancer") %>%
+  filter(is_outlier == "TRUE") %>%
+  ggplot(aes(x = Cancer, fill = fusion)) +
+  geom_bar(position = "fill") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+expression_function_mutate(ret_counts) %>%
+  filter(cancer_status == "Cancer") %>%
+  filter(is_outlier == "TRUE") %>%
+  ggplot(aes(x = Cancer, fill = fusion)) +
+  geom_bar(position = "fill") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+expression_function_mutate(etv1_counts) %>%
+  filter(cancer_status == "Cancer") %>%
+  filter(is_outlier == "TRUE") %>%
+  ggplot(aes(x = Cancer, fill = fusion)) +
+  geom_bar(position = "fill") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+expression_function_mutate(ntrk3_counts) %>%
+  filter(cancer_status == "Cancer") %>%
+  filter(is_outlier == "TRUE") %>%
+  ggplot(aes(x = Cancer, fill = fusion)) +
+  geom_bar(position = "fill") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+expression_function_mutate(alk_counts) %>%
+  filter(cancer_status == "Cancer") %>%
+  filter(is_outlier == "TRUE") %>%
+  ggplot(aes(x = Cancer, fill = fusion)) +
+  geom_bar(position = "fill") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+expression_function_mutate(arhgap26_counts) %>%
+  filter(cancer_status == "Cancer") %>%
+  filter(is_outlier == "TRUE") %>%
+  ggplot(aes(x = Cancer, fill = fusion)) +
+  geom_bar(position = "fill") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+#graphs fusions == TRUE, stacked by outliers
+```{r}
+#early breaks
+expression_function_mutate(erg_counts) %>%
+  filter(fusion == "Fusion") %>%
+  ggplot(aes(x = Cancer, fill = is_outlier)) +
+  geom_bar(position = "fill") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+expression_function_mutate(maml3_counts) %>%
+  filter(cancer_status == "Cancer") %>%
+  filter(fusion == "Fusion") %>%
+  ggplot(aes(x = Cancer, fill = is_outlier)) +
+  geom_bar(position = "fill") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+expression_function_mutate(tfe3_counts) %>%
+  filter(cancer_status == "Cancer") %>%
+  filter(fusion == "Fusion") %>%
+  ggplot(aes(x = Cancer, fill = is_outlier)) +
+  geom_bar(position = "fill") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+expression_function_mutate(tmprss2_counts) %>%
+  filter(cancer_status == "Cancer") %>%
+  filter(fusion == "Fusion") %>%
+  ggplot(aes(x = Cancer, fill = is_outlier)) +
+  geom_bar(position = "fill") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+expression_function_mutate(rara_counts) %>%
+  filter(cancer_status == "Cancer") %>%
+  filter(fusion == "Fusion") %>%
+  ggplot(aes(x = Cancer, fill = is_outlier)) +
+  geom_bar(position = "fill") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+#middle
+expression_function_mutate(tacc3_counts) %>%
+  filter(cancer_status == "Cancer") %>%
+  filter(fusion == "Fusion") %>%
+  ggplot(aes(x = Cancer, fill = is_outlier)) +
+  geom_bar(position = "fill") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+expression_function_mutate(ret_counts) %>%
+  filter(cancer_status == "Cancer") %>%
+  filter(fusion == "Fusion") %>%
+  ggplot(aes(x = Cancer, fill = is_outlier)) +
+  geom_bar(position = "fill") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+expression_function_mutate(etv1_counts) %>%
+  filter(cancer_status == "Cancer") %>%
+  filter(fusion == "Fusion") %>%
+  ggplot(aes(x = Cancer, fill = is_outlier)) +
+  geom_bar(position = "fill") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+expression_function_mutate(ntrk3_counts) %>%
+  filter(cancer_status == "Cancer") %>%
+  filter(fusion == "Fusion") %>%
+  ggplot(aes(x = Cancer, fill = is_outlier)) +
+  geom_bar(position = "fill") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+expression_function_mutate(alk_counts) %>%
+  filter(cancer_status == "Cancer") %>%
+  filter(fusion == "Fusion") %>%
+  ggplot(aes(x = Cancer, fill = is_outlier)) +
+  geom_bar(position = "fill") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+expression_function_mutate(arhgap26_counts) %>%
+  filter(cancer_status == "Cancer") %>%
+  filter(fusion == "Fusion") %>%
+  ggplot(aes(x = Cancer, fill = is_outlier)) +
+  geom_bar(position = "fill") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+-not as nice looking like this
+```{r}
+all_genes %>%
+  filter(cancer_status == "Cancer") %>%
+  group_by(gene, Cancer) %>%
+  mutate(min = min(log2_auc_norm),
+            quant25 = quantile(log2_auc_norm, probs = 0.25), 
+            quant50 = quantile(log2_auc_norm, probs = 0.5),
+            quant75 = quantile(log2_auc_norm, probs = 0.75),
+            max = max(log2_auc_norm),
+            outlier = (quant75 + 1.5*(quant75 - quant25))) %>%
+  mutate(is_outlier = ifelse(log2_auc_norm >= outlier, T, F)) %>%
+  filter(is_outlier == "TRUE") %>%
+  ggplot(aes(x = Project_ID, fill = fusion)) +
+  geom_bar(position = "fill") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  facet_wrap(~ gene)
+```
+
+```{r}
+tacc3_combined %>%
+  filter(fusion == "Fusion") %>%
+  ggplot(aes(x = Project_ID, fill = is_outlier)) +
+  geom_bar(position = "fill") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(title = "TACC3: proportion of fusions as outliers")
+```
+
+```{r}
+all_genes %>%
+  filter(fusion == "Fusion", gene != "TMPRSS2") %>%
+  ggplot(aes(x = gene, fill = is_outlier)) +
+  geom_bar(position = "fill") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(title = "Sensitivity of outliers in identifying fusions")
+```
+
+
+
+
+
+
+
+
