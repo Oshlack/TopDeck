@@ -1,0 +1,306 @@
+---
+title: "Gene overexpression Fusions identified"
+output: html_notebook
+---
+#list of packages used
+```{r}
+library(readr)
+```
+
+
+#list of fusions ided by outliers
+```{r}
+outlier_fusions <- all_genes %>% filter(fusion == "Fusion", is_outlier == TRUE) %>% group_by(gene, Cancer) %>% select(rail_id, gene, Project_ID)
+outlier_fusions
+write_csv(outlier_fusions, "outlier_fusions.csv")
+```
+
+#list of fusions ided by overexpression (95th percentile)
+```{r}
+above_95percent <- all_genes %>% filter(fusion == "Fusion", above_95 == TRUE) %>% group_by(gene, Cancer) %>% select(rail_id, gene, Project_ID)]
+above_95percent
+write_csv(above_95percent, "above_95percent.csv")
+```
+
+#list of fusions ided by both methods
+```{r}
+ided_by_both <- all_genes %>%
+  filter(above_95 == TRUE, is_outlier == TRUE, fusion == "Fusion") %>% select(rail_id, gene, Project_ID)
+ided_by_both
+write_csv(ided_by_both, 'ided_by_both.csv')
+```
+
+##false positives (only cancer types with fusions)
+#overexpression
+```{r}
+t <- tacc3_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "BLCA" | Project_ID == "BRCA" | Project_ID == "CESC" | Project_ID == "ESCA" | Project_ID == "GBM" | Project_ID == "HNSC" | Project_ID == "KIRP" | Project_ID == "LAML" | Project_ID == "LGG" | Project_ID == "LIHC" | Project_ID == "LUAD" | Project_ID == "LUSC" | Project_ID == "STAD") %>%
+  filter(above_95 == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+al <- alk_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "BLCA" | Project_ID == "KIRP" | Project_ID == "LUAD" | Project_ID == "READ" | Project_ID == "SARC" | Project_ID == "SKCM" | Project_ID == "THCA") %>%
+  filter(above_95 == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+ar <- arhgap26_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "CESC" | Project_ID == "HNSC" | Project_ID == "LUAD" | Project_ID == "LUSC" | Project_ID == "SARC" | Project_ID == "STAD") %>%
+  filter(above_95 == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+er <- erg_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "CESC" | Project_ID == "LGG" | Project_ID == "PAAD" | Project_ID == "PCPG" | Project_ID == "PRAD") %>%
+  filter(above_95 == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+et <- etv1_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "LGG" | Project_ID == "PRAD") %>%
+  filter(above_95 == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+m <- maml3_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "BRCA" | Project_ID == "LIHC" | Project_ID == "PCPG") %>%
+  filter(above_95 == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+n <- ntrk3_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "BRCA" | Project_ID == "CESC" | Project_ID == "COAD" | Project_ID == "HNSC" | Project_ID == "LGG" | Project_ID == "PAAD" | Project_ID == "SKCM" | Project_ID == "THCA") %>%
+  filter(above_95 == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+ra <- rara_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "BRCA" | Project_ID == "CESC" | Project_ID == "GBM" | Project_ID == "LAML" | Project_ID == "OV" | Project_ID == "PCPG" | Project_ID == "READ" | Project_ID == "STAD") %>%
+  filter(above_95 == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+re <- ret_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "BRCA" | Project_ID == "COAD" | Project_ID == "LAML" | Project_ID == "LUAD" | Project_ID == "OV" | Project_ID == "THCA") %>%
+  filter(above_95 == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+tf <- tfe3_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "KIRC" | Project_ID == "KIRP" | Project_ID == "UCEC") %>%
+  filter(above_95 == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+fpr_specific <- rbind(al, ar, er, et, m, n, ra, re, t, tf)
+fpr_specific <- fpr_specific %>% .[order(.$gene, .$Project_ID),]
+fpr_specific
+write_csv(fpr_specific, 'overexp_fpr_specific.csv')
+```
+#outliers
+```{r}
+t <- tacc3_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "BLCA" | Project_ID == "BRCA" | Project_ID == "CESC" | Project_ID == "ESCA" | Project_ID == "GBM" | Project_ID == "HNSC" | Project_ID == "KIRP" | Project_ID == "LAML" | Project_ID == "LGG" | Project_ID == "LIHC" | Project_ID == "LUAD" | Project_ID == "LUSC" | Project_ID == "STAD") %>%
+  filter(is_outlier == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+al <- alk_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "BLCA" | Project_ID == "KIRP" | Project_ID == "LUAD" | Project_ID == "READ" | Project_ID == "SARC" | Project_ID == "SKCM" | Project_ID == "THCA") %>%
+  filter(is_outlier == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+ar <- arhgap26_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "CESC" | Project_ID == "HNSC" | Project_ID == "LUAD" | Project_ID == "LUSC" | Project_ID == "SARC" | Project_ID == "STAD") %>%
+  filter(is_outlier == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+er <- erg_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "CESC" | Project_ID == "LGG" | Project_ID == "PAAD" | Project_ID == "PCPG" | Project_ID == "PRAD") %>%
+  filter(is_outlier == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+et <- etv1_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "LGG" | Project_ID == "PRAD") %>%
+  filter(is_outlier == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+m <- maml3_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "BRCA" | Project_ID == "LIHC" | Project_ID == "PCPG") %>%
+  filter(is_outlier == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+n <- ntrk3_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "BRCA" | Project_ID == "CESC" | Project_ID == "COAD" | Project_ID == "HNSC" | Project_ID == "LGG" | Project_ID == "PAAD" | Project_ID == "SKCM" | Project_ID == "THCA") %>%
+  filter(is_outlier == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+ra <- rara_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "BRCA" | Project_ID == "CESC" | Project_ID == "GBM" | Project_ID == "LAML" | Project_ID == "OV" | Project_ID == "PCPG" | Project_ID == "READ" | Project_ID == "STAD") %>%
+  filter(is_outlier == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+re <- ret_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "BRCA" | Project_ID == "COAD" | Project_ID == "LAML" | Project_ID == "LUAD" | Project_ID == "OV" | Project_ID == "THCA") %>%
+  filter(is_outlier == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+tf <- tfe3_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "KIRC" | Project_ID == "KIRP" | Project_ID == "UCEC") %>%
+  filter(is_outlier == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+fpr_specific_outlier <- rbind(al, ar, er, et, m, n, ra, re, t, tf)
+fpr_specific_outlier <- fpr_specific_outlier %>% .[order(.$gene, .$Project_ID),]
+fpr_specific_outlier
+write_csv(fpr_specific_outlier, 'fpr_specific_outlier.csv')
+```
+
+#shared
+```{r}
+t <- tacc3_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "BLCA" | Project_ID == "BRCA" | Project_ID == "CESC" | Project_ID == "ESCA" | Project_ID == "GBM" | Project_ID == "HNSC" | Project_ID == "KIRP" | Project_ID == "LAML" | Project_ID == "LGG" | Project_ID == "LIHC" | Project_ID == "LUAD" | Project_ID == "LUSC" | Project_ID == "STAD") %>%
+  filter(above_95 == TRUE, is_outlier == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+al <- alk_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "BLCA" | Project_ID == "KIRP" | Project_ID == "LUAD" | Project_ID == "READ" | Project_ID == "SARC" | Project_ID == "SKCM" | Project_ID == "THCA") %>%
+  filter(above_95 == TRUE, is_outlier == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+ar <- arhgap26_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "CESC" | Project_ID == "HNSC" | Project_ID == "LUAD" | Project_ID == "LUSC" | Project_ID == "SARC" | Project_ID == "STAD") %>%
+  filter(above_95 == TRUE, is_outlier == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+er <- erg_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "CESC" | Project_ID == "LGG" | Project_ID == "PAAD" | Project_ID == "PCPG" | Project_ID == "PRAD") %>%
+  filter(above_95 == TRUE, is_outlier == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+et <- etv1_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "LGG" | Project_ID == "PRAD") %>%
+  filter(above_95 == TRUE, is_outlier == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+m <- maml3_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "BRCA" | Project_ID == "LIHC" | Project_ID == "PCPG") %>%
+  filter(above_95 == TRUE, is_outlier == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+n <- ntrk3_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "BRCA" | Project_ID == "CESC" | Project_ID == "COAD" | Project_ID == "HNSC" | Project_ID == "LGG" | Project_ID == "PAAD" | Project_ID == "SKCM" | Project_ID == "THCA") %>%
+  filter(above_95 == TRUE, is_outlier == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+ra <- rara_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "BRCA" | Project_ID == "CESC" | Project_ID == "GBM" | Project_ID == "LAML" | Project_ID == "OV" | Project_ID == "PCPG" | Project_ID == "READ" | Project_ID == "STAD") %>%
+  filter(above_95 == TRUE, is_outlier == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+re <- ret_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "BRCA" | Project_ID == "COAD" | Project_ID == "LAML" | Project_ID == "LUAD" | Project_ID == "OV" | Project_ID == "THCA") %>%
+  filter(above_95 == TRUE, is_outlier == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+tf <- tfe3_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "KIRC" | Project_ID == "KIRP" | Project_ID == "UCEC") %>%
+  filter(above_95 == TRUE, is_outlier == TRUE, fusion != "Fusion") %>% 
+  select(rail_id, gene, Project_ID)
+
+fpr_specific_shared <- rbind(al, ar, er, et, m, n, ra, re, t, tf)
+fpr_specific_shared <- fpr_specific_shared %>% .[order(.$gene, .$Project_ID),]
+fpr_specific_shared
+write_csv(fpr_specific_shared, 'fpr_specific_shared.csv')
+```
+
+#total false positives (including all cancers)
+```{r}
+outlier_false_pos <- all_genes %>%
+  filter(is_outlier == TRUE, fusion != "Fusion") %>% select(rail_id, gene, Project_ID)
+write_csv(outlier_false_pos, 'outlier_false_pos.csv')
+
+above95_false_pos <- all_genes %>%
+  filter(above_95 == TRUE, fusion != "Fusion") %>% select(rail_id, gene, Project_ID)
+write_csv(above95_false_pos, 'above95_false_pos.csv')
+
+shared_false_pos <- all_genes %>%
+  filter(above_95 == TRUE, is_outlier == TRUE, fusion != "Fusion") %>% select(rail_id, gene, Project_ID)
+write_csv(shared_false_pos, 'shared_false_pos.csv')
+```
+```{r}
+tacc3_combined %>% filter(has_cancer != "GTEx", above_95 == TRUE)
+all_genes %>%
+  filter(has_cancer == "Cancer", above_95 == TRUE, fusion != "Fusion") %>% select(rail_id, gene, Project_ID) %>% distinct(rail_id)
+above95_false_pos %>% filter(has_cancer == "Cancer") %>% distinct(rail_id)
+```
+
+```{r}
+tacc3_combined %>% filter(has_cancer == "Cancer", fusion != "Fusion") %>% filter(Project_ID == "BLCA" | Project_ID == "BRCA" | Project_ID == "CESC" | Project_ID == "ESCA" | Project_ID == "GBM" | Project_ID == "HNSC" | Project_ID == "KIRP" | Project_ID == "LAML" | Project_ID == "LGG" | Project_ID == "LIHC" | Project_ID == "LUAD" | Project_ID == "LUSC" | Project_ID == "STAD") %>% ungroup() %>% group_by(Project_ID) %>% distinct(rail_id) %>% summarise(n())
+```
+```{r}
+tacc3_combined %>% filter(has_cancer != "GTEx", fusion != "Fusion") %>% filter(Project_ID == "BLCA" | Project_ID == "BRCA" | Project_ID == "CESC" | Project_ID == "ESCA" | Project_ID == "GBM" | Project_ID == "HNSC" | Project_ID == "KIRP" | Project_ID == "LAML" | Project_ID == "LGG" | Project_ID == "LIHC" | Project_ID == "LUAD" | Project_ID == "LUSC" | Project_ID == "STAD") %>% ungroup() %>% summarise(n())
+```
+
+
+```{r}
+tacc3_combined %>% filter(has_cancer == "Cancer", above_95 == TRUE) %>% distinct(rail_id)
+tacc3_combined %>%
+  ungroup() %>%
+  filter(has_cancer == "Cancer") %>%
+  filter(Project_ID == "BLCA" | Project_ID == "BRCA" | Project_ID == "CESC" | Project_ID == "ESCA" | Project_ID == "GBM" | Project_ID == "HNSC" | Project_ID == "KIRP" | Project_ID == "LAML" | Project_ID == "LGG" | Project_ID == "LIHC" | Project_ID == "LUAD" | Project_ID == "LUSC" | Project_ID == "STAD") %>%
+  filter(above_95 == TRUE)
+```
+
+
+
